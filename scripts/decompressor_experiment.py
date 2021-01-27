@@ -75,7 +75,7 @@ if __name__ == "__main__":
             else:
                 shutil.rmtree(full_extract_dir)
 
-    df.to_csv(args.results_csv)
+    df.to_csv(args.results_csv, index=False)
 
     with open(args.walk_results, "w") as f:
         for file in decompressed_files:
