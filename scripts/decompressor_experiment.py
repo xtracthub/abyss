@@ -46,7 +46,7 @@ if __name__ == "__main__":
     transfer_authorizer = globus_sdk.AccessTokenAuthorizer(transfer_access_token)
     transfer_client = globus_sdk.TransferClient(authorizer=transfer_authorizer)
 
-    deep_blue_crawl_df = pd.read_csv(args.files_csv)
+    deep_blue_crawl_df = pd.read_csv(args.crawl_csv)
     file_uuid_mapping = dict()
     for index, row in deep_blue_crawl_df.iterrows():
         file_uuid_mapping[row[0]] = row[4]
@@ -54,11 +54,11 @@ if __name__ == "__main__":
     # Filter files
     filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == args.compression_extension].sort_values(by=["size_bytes"])
 
-    max_size_threshold = args.size_bytes  # Just to make sure we don't blow up the Jetstream instance
+    max_size_threshold = args.max_transfer_size  # Just to make sure we don't blow up the Jetstream instance
     transferred_files = []
     batch_n = 1
 
-    while len(filtered_files.index) > 0 and filtered_files.iloc[[0]].size_bytes <= max_size_threshold:
+    while len(filtered_files.index) > 0 and filtered_files.iloc[[0]].size_bytes.values[0] <= max_size_threshold:
         # Pick which files to transfer
         transfer_job_size = 0
         files_to_transfer = []
@@ -113,73 +113,79 @@ if __name__ == "__main__":
         try:
             num_files_to_process = len(os.listdir(args.dir_name))
             for idx, file in enumerate(os.listdir(args.dir_name)):
-                print(f"Decompressing file {idx + 1}/{num_files_to_process} ({(idx + 1)/num_files_to_process * 100}%")
-                if not os.path.isfile(file):
-                    pass
+                try:
+                    print(f"Decompressing file {idx + 1}/{num_files_to_process} ({(idx + 1)/num_files_to_process * 100}%)")
+                    if not os.path.isfile(file):
+                        pass
 
-                file_path = os.path.join(args.dir_name, file)
+                    file_path = os.path.join(args.dir_name, file)
 
-                if is_compressed(file):
-                    file_name = file
-                    compressed_size = os.path.getsize(file_path)
+                    if is_compressed(file):
+                        file_name = file
+                        compressed_size = os.path.getsize(file_path)
 
-                    if file_path.endswith(".zip"):
-                        full_extract_dir = os.path.join(args.extract_dir,
-                                                        os.path.basename(file_path)[:-4])
-                        t0 = time.time()
-                        decompress_zip(file_path, full_extract_dir)
-                        decompression_time = time.time() - t0
+                        if file_path.endswith(".zip"):
+                            full_extract_dir = os.path.join(args.extract_dir,
+                                                            os.path.basename(file_path)[:-4])
+                            t0 = time.time()
+                            decompress_zip(file_path, full_extract_dir)
+                            decompression_time = time.time() - t0
 
-                        t0 = time.time()
-                        with zipfile.ZipFile(file_path, "r") as zip_f:
-                            estimated_value = sum([zip_info.file_size for zip_info in zip_f.infolist()])
-                        estimation_time = time.time() - t0
+                            t0 = time.time()
+                            with zipfile.ZipFile(file_path, "r") as zip_f:
+                                estimated_value = sum([zip_info.file_size for zip_info in zip_f.infolist()])
+                                estimation_time = time.time() - t0
 
-                        with zipfile.ZipFile(file_path, "r") as zip_f:
-                            compression_types = [zip_info.compression_type for zip_info in zip_f.infolist()]
-                            compression_type = max(set(compression_types), key=compression_types.count)
+                            with zipfile.ZipFile(file_path, "r") as zip_f:
+                                compression_types = [zip_info.compress_type for zip_info in zip_f.infolist()]
+                                compression_type = max(set(compression_types), key=compression_types.count)
 
-                    elif file_path.endswith(".tar.gz"):
-                        full_extract_dir = os.path.join(args.extract_dir,
-                                                        os.path.basename(file_path)[:-7])
-                        decompress_tar_gz(file_path, full_extract_dir)
+                        elif file_path.endswith(".tar.gz"):
+                            full_extract_dir = os.path.join(args.extract_dir,
+                                                            os.path.basename(file_path)[:-7])
+                            decompress_tar_gz(file_path, full_extract_dir)
 
-                        estimated_value = None
+                            estimated_value = None
 
-                    elif file_path.endswith(".tar"):
-                        full_extract_dir = os.path.join(args.extract_dir,
-                                                        os.path.basename(file_path)[:-4])
-                        decompress_tar(file_path, full_extract_dir)
+                        elif file_path.endswith(".tar"):
+                            full_extract_dir = os.path.join(args.extract_dir,
+                                                            os.path.basename(file_path)[:-4])
+                            decompress_tar(file_path, full_extract_dir)
 
-                        estimated_value = None
+                            estimated_value = None
 
-                    elif file_path.endswith(".gz"):
-                        full_extract_dir = os.path.join(args.extract_dir,
-                                                        os.path.basename(file_path)[:-3])
-                        decompress_gz(file_path, full_extract_dir)
+                        elif file_path.endswith(".gz"):
+                            full_extract_dir = os.path.join(args.extract_dir,
+                                                            os.path.basename(file_path)[:-3])
+                            decompress_gz(file_path, full_extract_dir)
 
-                        estimated_value = None
+                            estimated_value = None
 
-                    else:
-                        raise ValueError(f"{file_path} is not a compressed file")
+                        else:
+                            raise ValueError(f"{file_path} is not a compressed file")
 
-                    decompressed_size = 0
-                    for path, subdirs, files in os.walk(full_extract_dir):
-                        for decompressed_file in files:
-                            fp = os.path.join(path, decompressed_file)
-                            decompressed_files.append(fp)
-                            decompressed_size += os.path.getsize(fp)
+                        decompressed_size = 0
+                        for path, subdirs, files in os.walk(full_extract_dir):
+                            for decompressed_file in files:
+                                fp = os.path.join(path, decompressed_file)
+                                decompressed_files.append(fp)
+                                decompressed_size += os.path.getsize(fp)
 
-                    df.loc[len(df.index)] = [file_name, compressed_size, decompressed_size, estimated_value,
-                                             compression_type, decompression_time, estimation_time]
+                        df.loc[len(df.index)] = [file_name, compressed_size, decompressed_size, estimated_value,
+                                                 compression_type, decompression_time, estimation_time]
 
-                    if os.path.isfile(full_extract_dir):
-                        os.remove(full_extract_dir)
-                    else:
-                        shutil.rmtree(full_extract_dir)
+                        if os.path.isfile(full_extract_dir):
+                            os.remove(full_extract_dir)
+                        else:
+                            shutil.rmtree(full_extract_dir)
+                except Exception as e:
+                    print(e)
 
             for file in files_to_transfer:
                 os.remove(os.path.join(args.dir_name, file_uuid_mapping[file]))
+            if batch_n >= 2:
+                break
+            batch_n += 1
         except Exception as e:
             print(f"Decompressing returned error: {e}")
 
