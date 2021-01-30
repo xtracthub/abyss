@@ -5,6 +5,7 @@ import pandas as pd
 import shutil
 import time
 import zipfile
+import tarfile
 from decompressor import decompress_tar_gz, decompress_zip, decompress_gz, decompress_tar, is_compressed
 
 
@@ -77,6 +78,7 @@ if __name__ == "__main__":
 
         print(f"Transferring batch {batch_n}:")
         print(f"{len(files_to_transfer)} files to transfer...")
+        print(files_to_transfer)
         print(f"Total size: {transfer_job_size / (10 ** 9)} GB...")
 
         # Transfer data
@@ -134,25 +136,25 @@ if __name__ == "__main__":
                             t0 = time.time()
                             with zipfile.ZipFile(file_path, "r") as zip_f:
                                 estimated_value = sum([zip_info.file_size for zip_info in zip_f.infolist()])
-                                estimation_time = time.time() - t0
+                            estimation_time = time.time() - t0
 
                             with zipfile.ZipFile(file_path, "r") as zip_f:
                                 compression_types = [zip_info.compress_type for zip_info in zip_f.infolist()]
                                 compression_type = max(set(compression_types), key=compression_types.count)
 
-                        elif file_path.endswith(".tar.gz"):
-                            full_extract_dir = os.path.join(args.extract_dir,
-                                                            os.path.basename(file_path)[:-7])
-                            decompress_tar_gz(file_path, full_extract_dir)
-
-                            estimated_value = None
-
                         elif file_path.endswith(".tar"):
                             full_extract_dir = os.path.join(args.extract_dir,
-                                                            os.path.basename(file_path)[:-4])
-                            decompress_tar(file_path, full_extract_dir)
+                                                            os.path.basename(file_path)[:-7])
+                            t0 = time.time()
+                            with tarfile.open(file_path) as tar_f:
+                                tar_f.extractall(full_extract_dir)
+                            decompression_time = time.time() - t0
 
-                            estimated_value = None
+                            t0 = time.time()
+                            with tarfile.open(file_path) as tar_f:
+                                estimated_value = sum([tar_info.size for tar_info in tar_f.getmembers()])
+                            estimation_time = time.time() - t0
+                            compression_type = None
 
                         elif file_path.endswith(".gz"):
                             full_extract_dir = os.path.join(args.extract_dir,
@@ -182,7 +184,10 @@ if __name__ == "__main__":
                     print(e)
 
             for file in files_to_transfer:
-                os.remove(os.path.join(args.dir_name, file_uuid_mapping[file]))
+                try:
+                    os.remove(os.path.join(args.dir_name, file_uuid_mapping[file]))
+                except Exception as e:
+                    print(e)
             if batch_n >= 2:
                 break
             batch_n += 1
@@ -191,6 +196,7 @@ if __name__ == "__main__":
 
     print("DONE PROCESSING ALL FILES")
     print("Writing results to disk...")
+    print(len(decompressed_files))
 
     df.to_csv(args.results_csv, index=False)
 
@@ -201,7 +207,3 @@ if __name__ == "__main__":
     with open(args.walk_results, "w") as f:
         for file in decompressed_files:
             f.write(file + "\n")
-
-
-
-
