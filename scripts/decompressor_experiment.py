@@ -6,6 +6,7 @@ import shutil
 import time
 import zipfile
 import tarfile
+import gzip
 from decompressor import decompress_tar_gz, decompress_zip, decompress_gz, decompress_tar, is_compressed
 
 
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     transferred_files = []
     batch_n = 1
 
-    while len(filtered_files.index) > 0 and filtered_files.iloc[[0]].size_bytes.values[0] <= max_size_threshold:
+    while len(filtered_files.index) > len(transferred_files) and filtered_files.iloc[[0]].size_bytes.values[0] <= max_size_threshold:
         # Pick which files to transfer
         transfer_job_size = 0
         files_to_transfer = []
@@ -75,6 +76,9 @@ if __name__ == "__main__":
             else:
                 files_to_transfer.append(file_path)
                 transfer_job_size += file_size
+
+        if not files_to_transfer:
+            break
 
         print(f"Transferring batch {batch_n}:")
         print(f"{len(files_to_transfer)} files to transfer...")
@@ -159,7 +163,13 @@ if __name__ == "__main__":
                         elif file_path.endswith(".gz"):
                             full_extract_dir = os.path.join(args.extract_dir,
                                                             os.path.basename(file_path)[:-3])
-                            decompress_gz(file_path, full_extract_dir)
+                            t0 = time.time()
+                            with gzip.open(file_path, "rb") as gz_f:
+                                with open(full_extract_dir, "wb") as f:
+                                    f.write(gz_f.read())
+                            decompression_time = time.time() - t0
+                            estimation_time = None
+                            compression_type = None
 
                             estimated_value = None
 
