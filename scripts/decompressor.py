@@ -137,5 +137,5 @@ if __name__ == "__main__":
 
     t0 = time.time()
     with tarfile.open(file_path) as tar_f:
-        print(sum([tar_info.size for tar_info in tar_f.getmembers()]))
+        print([tar_info.name for tar_info in tar_f.getmembers()])
     print(time.time() - t0)
