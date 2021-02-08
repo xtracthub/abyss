@@ -3,6 +3,7 @@ import pandas as pd
 import pickle as pkl
 from predictors.predictor import Predictor
 from sklearn.linear_model import LinearRegression
+from typing import Optional
 
 
 class GZipPredictor(Predictor):
@@ -11,10 +12,32 @@ class GZipPredictor(Predictor):
 
     @staticmethod
     def is_compatible(file_path: str) -> bool:
+        """Returns whether a file is compatible with gzip predictor.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to file to check compatibility with.
+
+        Returns
+        -------
+        bool
+            Whether file_path is compatible with gzip predictor.
+        """
         return Predictor.get_extension(file_path) == ".gz"
 
     @staticmethod
-    def train_model(data_path: str, save_path: str) -> None:
+    def train_model(data_path: Optional[str] = "../data/gzip_decompression_results.csv",
+                    save_path: Optional[str] = "gzip_model.pkl") -> None:
+        """Trains and saves a predictor model.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to data to train on.
+        save_path : str
+            Path to save model.
+        """
         data_df = pd.read_csv(data_path)
 
         x = np.array(data_df.compressed_size)
@@ -28,24 +51,31 @@ class GZipPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path="gzip_model.pkl") -> None:
+    def load_model(self, load_path: Optional[str] = "gzip_model.pkl") -> None:
+        """Loads model to class.
+
+        Parameters
+        ----------
+        load_path : str
+            Path to predictor model to load.
+        """
         with open(load_path, "rb") as f:
             self.model = pkl.load(f)
 
     def predict(self, file_path: str, file_size: float) -> float:
-        """Predicts the size of decompressed data.
+        """Predicts the size of decompressed .gz file.
 
         Parameters
         ----------
         file_path : str
             Path of compressed file to predict on.
-        file_size : int
+        file_size : float
             Size of compressed file to predict on.
 
         Returns
         -------
-        int
-            Prediction of decompressed file size.
+        float
+            Prediction of decompressed .gz file size.
         """
         if not self.model:
             raise ValueError("Model must be loaded before running predictions.")
@@ -56,4 +86,4 @@ class GZipPredictor(Predictor):
 
 
 if __name__ == "__main__":
-    GZipPredictor.train_model("../data/gzip_decompression_results.csv", "blah")
+    pass

@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     # Transfer files
 
-    petrel_endpoint = "4f99675c-ac1f-11ea-bee8-0e716405a293"
+    petrel_endpoint = "45a53408-c797-11e6-9c33-22000a1e3b52"
     jetstream_endpoint = "49f1efac-6049-11eb-87c8-02187389bd35"
 
     native_auth_client = globus_sdk.NativeAppAuthClient('7414f0b4-7d05-4bb6-bb00-076fa3f17cf5')
@@ -146,6 +146,13 @@ if __name__ == "__main__":
                                 compression_types = [zip_info.compress_type for zip_info in zip_f.infolist()]
                                 compression_type = max(set(compression_types), key=compression_types.count)
 
+                            decompressed_size = 0
+                            for path, subdirs, files in os.walk(full_extract_dir):
+                                for decompressed_file in files:
+                                    fp = os.path.join(path, decompressed_file)
+                                    decompressed_files.append(fp)
+                                    decompressed_size += os.path.getsize(fp)
+
                         elif file_path.endswith(".tar"):
                             full_extract_dir = os.path.join(args.extract_dir,
                                                             os.path.basename(file_path)[:-7])
@@ -160,6 +167,13 @@ if __name__ == "__main__":
                             estimation_time = time.time() - t0
                             compression_type = None
 
+                            decompressed_size = 0
+                            for path, subdirs, files in os.walk(full_extract_dir):
+                                for decompressed_file in files:
+                                    fp = os.path.join(path, decompressed_file)
+                                    decompressed_files.append(fp)
+                                    decompressed_size += os.path.getsize(fp)
+
                         elif file_path.endswith(".gz"):
                             full_extract_dir = os.path.join(args.extract_dir,
                                                             os.path.basename(file_path)[:-3])
@@ -173,15 +187,10 @@ if __name__ == "__main__":
 
                             estimated_value = None
 
+                            decompressed_size = os.path.getsize(full_extract_dir)
+
                         else:
                             raise ValueError(f"{file_path} is not a compressed file")
-
-                        decompressed_size = 0
-                        for path, subdirs, files in os.walk(full_extract_dir):
-                            for decompressed_file in files:
-                                fp = os.path.join(path, decompressed_file)
-                                decompressed_files.append(fp)
-                                decompressed_size += os.path.getsize(fp)
 
                         df.loc[len(df.index)] = [file_name, compressed_size, decompressed_size, estimated_value,
                                                  compression_type, decompression_time, estimation_time]

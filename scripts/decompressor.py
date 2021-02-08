@@ -43,7 +43,7 @@ def decompress_tar(file_path: str, extract_dir: str) -> None:
     extract_dir : str
         Path to directory to decompress to.
     """
-    with tarfile.open(file_path) as tar_f:
+    with tarfile.open(file_path, "r:gz") as tar_f:
         tar_f.extractall(extract_dir)
 
 
@@ -131,11 +131,5 @@ def decompress(file_path: str, extract_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    import time
-    file_path = "Observation_Data.tar"
-    full_extract_dir = "."
-
-    t0 = time.time()
-    with tarfile.open(file_path) as tar_f:
-        print([tar_info.name for tar_info in tar_f.getmembers()])
-    print(time.time() - t0)
+    with tarfile.open("checkpoint-370.pth.tar", "r:gz") as tar_f:
+        tar_f.extractall("checkpoint-370")

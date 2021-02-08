@@ -5,6 +5,7 @@ from predictors.predictor import Predictor
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
+from typing import Optional
 
 
 class TarPredictor(Predictor):
@@ -13,10 +14,32 @@ class TarPredictor(Predictor):
 
     @staticmethod
     def is_compatible(file_path: str) -> bool:
+        """Returns whether a file is compatible with tar predictor.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to file to check compatibility with.
+
+        Returns
+        -------
+        bool
+            Whether file_path is compatible with tar predictor.
+        """
         return Predictor.get_extension(file_path) == ".tar"
 
     @staticmethod
-    def train_model(data_path: str, save_path: str) -> None:
+    def train_model(data_path: Optional[str] = "../tar_decompression_results.csv",
+                    save_path: Optional[str] = "tar_model.pkl") -> None:
+        """Trains and saves a predictor model.
+
+        Parameters
+        ----------
+        data_path : str
+            Path to data to train on.
+        save_path : str
+            Path to save model.
+        """
         data_df = pd.read_csv(data_path)
 
         x = np.array(data_df.compressed_size)
@@ -31,24 +54,31 @@ class TarPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path="tar_model.pkl") -> None:
+    def load_model(self, load_path: Optional[str] = "tar_model.pkl") -> None:
+        """Loads model to class.
+
+        Parameters
+        ----------
+        load_path : str
+            Path to predictor model to load.
+        """
         with open(load_path, "rb") as f:
             self.model = pkl.load(f)
 
     def predict(self, file_path: str, file_size: float) -> float:
-        """Predicts the size of decompressed data.
+        """Predicts the size of decompressed .tar file.
 
         Parameters
         ----------
         file_path : str
             Path of compressed file to predict on.
-        file_size : int
+        file_size : float
             Size of compressed file to predict on.
 
         Returns
         -------
-        int
-            Prediction of decompressed file size.
+        float
+            Prediction of decompressed .tar file size.
         """
         if not self.model:
             raise ValueError("Model must be loaded before running predictions.")
@@ -59,7 +89,4 @@ class TarPredictor(Predictor):
 
 
 if __name__ == "__main__":
-    TarPredictor.train_model("../data/tar_decompression_results.csv", "tar_model.pkl")
-    p = TarPredictor()
-    p.load_model("tar_model.pkl")
-    print(p.predict("/blah/blah", 1000))
+    pass

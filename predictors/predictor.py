@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from typing import Optional
 
 
 class Predictor(ABC):
@@ -43,7 +44,7 @@ class Predictor(ABC):
 
     @staticmethod
     @abstractmethod
-    def train_model(data_path: str, save_path: str) -> None:
+    def train_model(data_path: Optional[str], save_path: Optional[str]) -> None:
         """Trains and saves a predictor model.
 
         Parameters
@@ -56,7 +57,7 @@ class Predictor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_model(self, load_path: str) -> None:
+    def load_model(self, load_path: Optional[str]) -> None:
         """Loads model to class.
 
         Parameters
@@ -67,19 +68,19 @@ class Predictor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, file_path: str, file_size: int) -> int:
+    def predict(self, file_path: str, file_size: float) -> float:
         """Predicts the size of decompressed data.
 
         Parameters
         ----------
         file_path : str
             Path of compressed file to predict on.
-        file_size : int
+        file_size : float
             Size of compressed file to predict on.
 
         Returns
         -------
-        int
+        float
             Prediction of decompressed file size.
         """
         raise NotImplementedError

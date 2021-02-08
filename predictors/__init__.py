@@ -1,8 +1,10 @@
 from predictors.predictor import Predictor
 from predictors.tar_predictor import TarPredictor
+from predictors.gzip_predictor import GZipPredictor
 
 file_predictor_mapping = {
-    ".tar": TarPredictor
+    ".tar": TarPredictor,
+    ".gz": GZipPredictor
 }
 
 
