@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     # Transfer files
 
-    petrel_endpoint = "45a53408-c797-11e6-9c33-22000a1e3b52"
+    petrel_endpoint = "4f99675c-ac1f-11ea-bee8-0e716405a293"
     jetstream_endpoint = "49f1efac-6049-11eb-87c8-02187389bd35"
 
     native_auth_client = globus_sdk.NativeAppAuthClient('7414f0b4-7d05-4bb6-bb00-076fa3f17cf5')
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         file_uuid_mapping[row[0]] = row[4]
 
     # Filter files
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == args.compression_extension].sort_values(by=["size_bytes"])
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.file_uuid.str.endswith(args.compression_extension)].sort_values(by=["size_bytes"])
 
     max_size_threshold = args.max_transfer_size  # Just to make sure we don't blow up the Jetstream instance
     transferred_files = []
@@ -152,10 +152,41 @@ if __name__ == "__main__":
                                     fp = os.path.join(path, decompressed_file)
                                     decompressed_files.append(fp)
                                     decompressed_size += os.path.getsize(fp)
+                        elif file_path.endswith(".tar.gz"):
+                            full_extract_dir = file_path[:-3]
+                            print(f"EXTRACTING {file_path} to {full_extract_dir}")
+                            with gzip.open(file_path, "rb") as gz_f:
+                                with open(full_extract_dir, "wb") as f:
+                                    f.write(gz_f.read())
+
+                            print(f"DELETING {file_path}")
+                            os.remove(file_path)
+
+                            file_path = full_extract_dir
+                            full_extract_dir = os.path.join(args.extract_dir,
+                                                            os.path.basename(full_extract_dir)[:-4])
+                            print(f"EXTRACTING {file_path} to {full_extract_dir}")
+                            t0 = time.time()
+                            with tarfile.open(file_path) as tar_f:
+                                tar_f.extractall(full_extract_dir)
+                            decompression_time = time.time() - t0
+
+                            t0 = time.time()
+                            with tarfile.open(file_path) as tar_f:
+                                estimated_value = sum([tar_info.size for tar_info in tar_f.getmembers()])
+                            estimation_time = time.time() - t0
+                            compression_type = None
+
+                            decompressed_size = 0
+                            for path, subdirs, files in os.walk(full_extract_dir):
+                                for decompressed_file in files:
+                                    fp = os.path.join(path, decompressed_file)
+                                    decompressed_files.append(fp)
+                                    decompressed_size += os.path.getsize(fp)
 
                         elif file_path.endswith(".tar"):
                             full_extract_dir = os.path.join(args.extract_dir,
-                                                            os.path.basename(file_path)[:-7])
+                                                            os.path.basename(file_path)[:-4])
                             t0 = time.time()
                             with tarfile.open(file_path) as tar_f:
                                 tar_f.extractall(full_extract_dir)
@@ -202,9 +233,9 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(e)
 
-            for file in files_to_transfer:
+            for file in os.listdir(args.dirname):
                 try:
-                    os.remove(os.path.join(args.dir_name, file_uuid_mapping[file]))
+                    os.remove(os.path.join(args.dir_name, file))
                 except Exception as e:
                     print(e)
             if batch_n >= 2:
