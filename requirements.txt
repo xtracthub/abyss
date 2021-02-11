@@ -3,3 +3,5 @@ pandas
 scikit-learn
 tensorflow
 keras
+flask
+globus-sdk
