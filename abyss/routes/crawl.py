@@ -23,7 +23,7 @@ def crawl():
         List of compressed data to crawl and process.
     grouper : str
         Name of grouper to group decompressed data.
-    worker_params: list(dict())
+    worker_params: list(dict)
         List of dictionary entries for each compute worker. Dictionary
         should include globus_dest_eid (Globus endpoint ID), funx_eid
         (funcX endpoint ID), bytes_available (available storage in
