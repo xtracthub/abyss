@@ -1,8 +1,7 @@
-import os
 import logging
 import psycopg2
 import psycopg2.extras
-from configparser import ConfigParser
+from flask import Flask
 from typing import List, Dict
 
 
@@ -13,54 +12,45 @@ CRAWL_STATUS_TABLE = {
 }
 
 ABYSS_TABLES = {"crawl": CRAWL_STATUS_TABLE}
-PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
 
 
-def read_config(config_file: str, section="postgresql") -> Dict:
-    """Reads PostgreSQL credentials from a .ini file.
+def read_db_config(app: Flask) -> Dict:
+    """Reads PostgreSQL credentials from a Flask app configuration.
 
     Parameters
     ----------
-    config_file : str
-        Path to file to read credentials from.
-    section : str
-        Section in .ini file where credentials are located.
+    app : Flask
+        Flask app to read database configuration from.
 
     Returns
     -------
     credentials : dict
         Dictionary with credentials.
     """
-    parser = ConfigParser()
-    parser.read(config_file)
+    credentials = dict()
 
-    credentials = {}
-
-    if parser.has_section(section):
-        params = parser.items(section)
-        for param in params:
-            credentials[param[0]] = param[1]
-
-    else:
-        raise Exception(f"Section {section} not found in the {config_file} file")
+    credentials["host"] = app.config.get("DB_HOST")
+    credentials["database"] = app.config.get("DB_DATABASE")
+    credentials["user"] = app.config.get("DB_USER")
+    credentials["password"] = app.config.get("DB_PASSWORD")
 
     return credentials
 
 
-def create_connection(config_file=os.path.join(PROJECT_ROOT, "database.ini")):
+def create_connection(app: Flask):
     """Creates a connection object to a PostgreSQL database.
 
     Parameters
     ----------
-    config_file : str
-        Path to file to read credentials from.
+    app : Flask
+        Flask app to read database configuration from.
 
     Returns
     -------
     conn
         Connection object to database.
     """
-    conn = psycopg2.connect(**read_config(config_file=config_file))
+    conn = psycopg2.connect(**read_db_config(app))
     logging.info("Connection to database succeeded")
 
     return conn
@@ -88,7 +78,7 @@ def table_exists(conn, table_name: str) -> bool:
     return bool(cur.rowcount)
 
 
-def build_tables(conn, tables: str) -> None:
+def build_tables(conn, tables: Dict[str, Dict]) -> None:
     """Creates tables within a database.
 
     Parameters
@@ -107,13 +97,14 @@ def build_tables(conn, tables: str) -> None:
     cur = conn.cursor()
 
     for table_name, table_info in tables.items():
-        column_statements = []
+        if not(table_exists(conn, table_name)):
+            column_statements = []
 
-        for column_name, column_type in table_info.items():
-            column_statements.append(column_name + " " + column_type)
+            for column_name, column_type in table_info.items():
+                column_statements.append(column_name + " " + column_type)
 
-        table_statement = f"""CREATE TABLE {table_name} ({", ".join(column_statements)})"""
-        cur.execute(table_statement)
+            table_statement = f"""CREATE TABLE {table_name} ({", ".join(column_statements)});"""
+            cur.execute(table_statement)
 
     cur.close()
     conn.commit()
@@ -164,7 +155,7 @@ def create_table_entry(conn, table_name: str, **columns) -> None:
 
 
 def update_table_entry(conn, table_name: str,
-                       primary_key: dict, **columns) -> None:
+                       primary_key: Dict, **columns) -> None:
     """Updates values within an existing table.
 
     Parameters

@@ -1,6 +1,7 @@
 .idea/
 .ipynb_checkpoints
 __pycache__/
+*.ini
 
 set_env.sh
 data/mdf_crawl/
