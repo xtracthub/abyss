@@ -111,29 +111,8 @@ class LocalCrawler(Crawler):
                 elif os.path.isdir(path):
                     self.crawl_queue.put(path)
 
-            families = self.grouper.group(file_ls)
-
-            # TODO: Stolen from xtract crawler. Will have to be revisited later.
-            if isinstance(families, list):
-                for family in families:
-                    fam = Family()
-
-                    for group in family['groups']:
-                        file_dict_ls = []
-                        for fname in group['files']:
-                            f_dict = {'path': fname,
-                                      'metadata': dir_file_metadata[fname],
-                                      'base_url': self.base_path}
-                            file_dict_ls.append(f_dict)
-
-                        fam.add_group(files=file_dict_ls,
-                                      parser=group["parser"])
-
-                    dict_fam = fam.to_dict()
-                    dict_fam['metadata'][
-                        'crawl_timestamp'] = time.time()
-
-                    self.push_queue.put(dict_fam)
+            for path in file_ls:
+                self.push_queue.put({"path": dir_file_metadata[path]})
 
         self.crawl_threads_status[thread_id] = "FINISHED"
 
@@ -156,15 +135,3 @@ class LocalCrawler(Crawler):
                         self.region_name)
 
         self.push_threads_status[thread_id] = "FINISHED"
-
-    @staticmethod
-    def get_extension(file_path):
-        """Returns the extension of a filepath.
-        Parameter:
-        filepath (str): Filepath to get extension of.
-        Return:
-        extension (str): Extension of filepath.
-        """
-        extension = os.path.splitext(file_path)[1]
-
-        return extension

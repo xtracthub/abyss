@@ -1,15 +1,12 @@
+from typing import List
 from xtract_sdk.packagers.family import Family
 from abyss.grouper.grouper import Grouper
 
 
 class ExtensionGrouper(Grouper):
-    def __init__(self, creds, by_file=True, logger=None):
-        self.logger = logger
+    def __init__(self):
         self.by_file = True
         self.max_bytes = 1073741824  # 1 GB
-
-        # TODO: Eventually we want to add creds here, but for now we re-inject at Orchestration.
-        self.creds = creds
 
     # TODO: Create a 'mappings' file that just contains a bunch of these sets.
     def get_mappings(self):
@@ -28,7 +25,7 @@ class ExtensionGrouper(Grouper):
         return {"text": text_types, "tabular": tabular_types, "images": image_types,
                 "compressed": compressed_types, "hierarch": hierarch_types}
 
-    def group(self, file_ls):
+    def group(self, file_ls: List[str]):
 
         crawl_tallies = {"text": 0, "tabular": 0, "images": 0, "presentation": 0,
                          "other": 0, "hierarch": 0, "compressed": 0}
@@ -41,6 +38,7 @@ class ExtensionGrouper(Grouper):
         families = []
 
         mappings = self.get_mappings()
+
 
         for fdict in file_ls:
 
@@ -81,12 +79,10 @@ class ExtensionGrouper(Grouper):
 
             groups.append(fdict)
 
-            # Here we will use the Xtract family object
-            family = Family(download_type="gdrive")
+            family = Family()
 
             family.add_group(files=[{"path": fdict["id"],
                                      "metadata": fdict,
-                                     "is_gdoc": fdict["is_gdoc"],  # TODO: generalize away from Google Drive. Local can use this too!
                                      "mimeType": mimeType}],
                              parser=fdict["extractor"])
 

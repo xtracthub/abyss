@@ -1,5 +1,5 @@
 from abyss.grouper.grouper import Grouper
-from abyss.grouper.ExtensionGrouper import ExtensionGrouper
+from abyss.grouper.extension_grouper import ExtensionGrouper
 from abyss.grouper.matio_grouper import MatIOGrouper
 
 GROUPER_NAME_MAPPING = {
