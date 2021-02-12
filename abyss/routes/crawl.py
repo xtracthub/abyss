@@ -31,9 +31,10 @@ def crawl():
         Name of grouper to group decompressed data.
     worker_params: list(dict)
         List of dictionary entries for each compute worker. Dictionary
-        should include globus_dest_eid (Globus endpoint ID), funx_eid
+        should include globus_dest_eid (Globus endpoint ID), funcx_eid
         (funcX endpoint ID), bytes_available (available storage in
-        bytes), decompress_dir (directory to decompress data to).
+        bytes), transfer_dir (directory to transfer files to),
+        decompress_dir (directory to decompress data to).
 
     Returns
     -------
