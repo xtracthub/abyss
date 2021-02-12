@@ -13,7 +13,9 @@ REQUIRED_PARAMETERS = [
 REQUIRED_WORKER_PARAMETERS = [
     ("globus_dest_eid", str),
     ("funcx_eid", str),
-    ("bytes_available", int)
+    ("bytes_available", int),
+    ("transfer_dir", str),
+    ("decompress_dir", str)
 ]
 
 
