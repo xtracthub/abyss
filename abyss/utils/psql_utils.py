@@ -1,20 +1,29 @@
 import logging
+import os
 import psycopg2
 import psycopg2.extras
+from configparser import ConfigParser
 from flask import Flask
 from typing import List, Dict
 
 
-CRAWL_STATUS_TABLE = {
-    "crawl_id": "TEXT PRIMARY KEY",
+ABYSS_STATUS = {
+    "abyss_id": "TEXT PRIMARY KEY",
     "client_id": "TEXT",
     "crawl_status": "TEXT"
 }
 
-ABYSS_TABLES = {"crawl": CRAWL_STATUS_TABLE}
+CRAWL_STATUS_TABLE = {
+    "crawl_id": "TEXT PRIMARY KEY",
+    "crawl_status": "TEXT"
+}
+
+ABYSS_TABLES = {"crawl_status": CRAWL_STATUS_TABLE,
+                "abyss_status": ABYSS_STATUS}
+PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
 
 
-def read_db_config(app: Flask) -> Dict:
+def read_flask_db_config(app: Flask) -> Dict:
     """Reads PostgreSQL credentials from a Flask app configuration.
 
     Parameters
@@ -37,20 +46,54 @@ def read_db_config(app: Flask) -> Dict:
     return credentials
 
 
-def create_connection(app: Flask):
+def read_db_config_file(config_file=os.path.join(PROJECT_ROOT,
+                                                 "database.ini"),
+                        section="postgresql") -> Dict:
+    """Reads PostgreSQL credentials from a .ini file.
+
+    Parameters
+    ----------
+    config_file : str
+        .ini config file to read database configuration from.
+    section : str
+        Section in .ini file to read credentials from.
+
+    Returns
+    -------
+    credentials : dict
+        Dictionary with credentials.
+    """
+    parser = ConfigParser()
+    parser.read(config_file)
+
+    credentials = {}
+
+    if parser.has_section(section):
+        params = parser.items(section)
+        for param in params:
+            credentials[param[0]] = param[1]
+
+    else:
+        raise Exception(
+            f"Section {section} not found in the {config_file} file")
+
+    return credentials
+
+
+def create_connection(credentials: Dict):
     """Creates a connection object to a PostgreSQL database.
 
     Parameters
     ----------
-    app : Flask
-        Flask app to read database configuration from.
+    credentials : Dict
+        Database credentials.
 
     Returns
     -------
     conn
         Connection object to database.
     """
-    conn = psycopg2.connect(**read_db_config(app))
+    conn = psycopg2.connect(**credentials)
     logging.info("Connection to database succeeded")
 
     return conn
@@ -197,7 +240,7 @@ def update_table_entry(conn, table_name: str,
 
     statement = f"""UPDATE {table_name}
                 SET {column_string}
-                WHERE {table_name}_id = %s"""
+                WHERE {primary_key_name} = %s"""
     cur = conn.cursor()
     cur.execute(statement, tuple(column_values))
     conn.commit()

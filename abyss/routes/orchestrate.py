@@ -2,20 +2,21 @@ import uuid
 from flask import Blueprint, request, current_app as app
 from abyss.authentication.auth import authenticate
 from abyss.orchestrator.abyss_orchestrator import AbyssOrchestrator
-from abyss.utils.psql_utils import create_connection, create_table_entry, select_by_column
+from abyss.utils.psql_utils import read_flask_db_config, \
+    create_connection, create_table_entry, select_by_column
 
 
-crawl_api = Blueprint("crawl", __name__)
+orchestrate_api = Blueprint("orchestrate", __name__)
 
 
-@crawl_api.route("/")
+@orchestrate_api.route("/")
 def root():
     return "hello world"
 
 
-@crawl_api.route("/crawl", methods=["POST"])
-def crawl():
-    """Handles requests for starting crawls.
+@orchestrate_api.route("/launch", methods=["POST"])
+def launch():
+    """Handles requests for starting orchestration jobs.
 
     Request Parameters
     -------
@@ -38,50 +39,50 @@ def crawl():
 
     Returns
     -------
-    crawl_id : str
-        UUID of crawl job.
+    abyss_id : str
+        UUID of abyss job.
     """
     client_id = authenticate(request)
 
     orchestrator_params = request.json
-    crawl_id = str(uuid.uuid4())
+    abyss_id = str(uuid.uuid4())
 
-    conn = create_connection(app)
+    conn = create_connection(read_flask_db_config(app))
     db_entry = {
-        "crawl_id": crawl_id,
+        "abyss_id": abyss_id,
         "client_id": client_id,
-        "crawl_status": None
+        "status": None
     }
-    create_table_entry(conn, "crawl", **db_entry)
+    create_table_entry(conn, "abyss_status", **db_entry)
 
-    return crawl_id
+    return abyss_id
 
 
-@crawl_api.route("/get_crawl_status", methods=["GET"])
-def get_crawl_status():
+@orchestrate_api.route("/get_status", methods=["GET"])
+def get_status():
     """Handles requests for starting crawls.
 
     Request Parameters
     -------
-    crawl_id : str
-        ID for crawl job.
+    abyss_id : str
+        ID for Abyss job.
 
     Returns
     -------
-    crawl_status : dict
-        Status of crawl.
+    abyss_status : dict
+        Status of Abyss job.
     """
     client_id = authenticate(request)
 
-    conn = create_connection(app)
-    crawl_status_params = request.json
-    crawl_id = crawl_status_params["crawl_id"]
+    conn = create_connection(read_flask_db_config(app))
+    status_params = request.json
+    abyss_id = status_params["abyss_id"]
 
-    user_crawls = select_by_column(conn, "crawl",
-                                   **{"client_id": client_id})
+    user_statuses = select_by_column(conn, "abyss_status",
+                                     **{"client_id": client_id})
 
-    for user_crawl in user_crawls:
-        if user_crawl["crawl_id"] == crawl_id:
-            return user_crawl
+    for user_status in user_statuses:
+        if user_status["abyss_id"] == abyss_id:
+            return user_status
 
-    return f"Crawl ID {crawl_id} does not match any crawls for user {client_id}"
+    return f"Abyss ID {abyss_id} does not match any crawls for user {client_id}"
