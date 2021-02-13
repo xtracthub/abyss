@@ -1,19 +1,18 @@
-import globus_sdk
-import os
 import threading
 import time
 import uuid
 from queue import Queue
 from typing import List
 
+import globus_sdk
+
 
 #TODO: Does not properly handle failed transfers. If a transfer fails at
 # any point, the thread will terminate regardless of if the transfer is
 # fatal.
 class GlobusPrefetcher:
-    def __init__(self, transfer_token: str, auth_token: str,
-                 globus_source_eid: str, globus_dest_eid: str,
-                 transfer_dir: str,
+    def __init__(self, transfer_token: str, globus_source_eid: str,
+                 globus_dest_eid: str, transfer_dir: str,
                  max_concurrent_transfers: int):
         """Class for facilitating transfers to a Globus endpoint.
 
@@ -21,8 +20,6 @@ class GlobusPrefetcher:
         ----------
         transfer_token : str
             Authorization token to transfer Globus files.
-        auth_token : str
-            Authorization token to access source Globus data storage.
         globus_source_eid : str
             Globus endpoint ID of source data storage.
         globus_dest_eid : str
@@ -31,7 +28,6 @@ class GlobusPrefetcher:
             Directory at endpoint to transfer files to.
         """
         self.transfer_token = transfer_token
-        self.auth_token = auth_token
         self.globus_source_eid = globus_source_eid
         self.globus_dest_eid = globus_dest_eid
         self.transfer_dir = transfer_dir
@@ -135,9 +131,11 @@ class GlobusPrefetcher:
             task = self.files_to_transfer.get()
 
             if isinstance(task, list):
+                print("BATCH")
                 self._thread_transfer_batch(task)
             else:
-                self._thread_transfer_batch(task)
+                print("FILE")
+                self._thread_transfer_file(task)
 
     def _thread_transfer_file(self, file_path):
         """Thread function for transferring individual files.
@@ -155,9 +153,9 @@ class GlobusPrefetcher:
                                         self.globus_source_eid,
                                         self.globus_dest_eid)
 
+        full_path = f"{self.transfer_dir}/{file_path}"
         tdata.add_item(file_path,
-                       os.path.join(self.transfer_dir,
-                                    file_path))
+                       full_path)
 
         task_id = self.tc.submit_transfer(tdata)["task_id"]
 
@@ -191,9 +189,9 @@ class GlobusPrefetcher:
                                         self.globus_dest_eid)
 
         for file_path in file_paths:
+            full_path = f"{self.transfer_dir}/{file_path}"
             tdata.add_item(file_path,
-                           os.path.join(self.transfer_dir,
-                                        file_path))
+                           full_path)
 
         task_id = self.tc.submit_transfer(tdata)["task_id"]
 
