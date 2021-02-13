@@ -24,4 +24,5 @@ def get_grouper(grouper_name: str) -> Grouper:
     try:
         return GROUPER_NAME_MAPPING[grouper_name]
     except KeyError:
-        raise ValueError(f"{grouper_name} grouper does not exist")
+        # raise ValueError(f"{grouper_name} grouper does not exist")
+        pass
