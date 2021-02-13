@@ -7,7 +7,7 @@ import globus_sdk
 from xtract_sdk.packagers import Family
 from abyss.crawler.crawler import Crawler
 from abyss.grouper import get_grouper
-from abyss.utils.sqs_utils import put_message, make_queue
+from abyss.utils.sqs_utils import put_messages, make_queue
 from abyss.utils.psql_utils import create_table_entry, update_table_entry, \
     select_by_column
 
@@ -15,8 +15,7 @@ from abyss.utils.psql_utils import create_table_entry, update_table_entry, \
 class GlobusCrawler(Crawler):
     def __init__(self, abyss_id: str, transfer_token: str,
                  globus_eid: str, base_path: str, grouper_name: str,
-                 conn, aws_access: str, aws_secret: str,
-                 region_name: str, max_crawl_threads=2, max_push_threads=4):
+                 conn, sqs_conn, max_crawl_threads=2, max_push_threads=4):
         """Crawls and groups files within a Globus directory, then pushes
         results to an SQS queue. Crawler status is recorded in a PostgreSQL
         database.
@@ -35,12 +34,8 @@ class GlobusCrawler(Crawler):
             Name of grouper to use.
         conn
             Connection object to PostgreSQL database.
-        aws_access : str
-            AWS access key for accessing SQS queue.
-        aws_secret : str
-            AWS secret key for accessing SQS queue.
-        region_name : str
-            AWS region name for SQS.
+        sqs_conn
+            AWS SQS boto3 object.
         max_crawl_threads : int
             Max number of threads to use to crawl.
         max_push_threads : str
@@ -53,9 +48,7 @@ class GlobusCrawler(Crawler):
         self.max_crawl_threads = max_crawl_threads
         self.max_push_threads = max_push_threads
         self.db_conn = conn
-        self.aws_access = aws_access
-        self.aws_secret = aws_secret
-        self.region_name = region_name
+        self.sqs_conn = sqs_conn
 
         self.crawl_id = str(uuid.uuid4())
         self.sqs_queue_name = f"crawl_{self.crawl_id}"
@@ -66,9 +59,7 @@ class GlobusCrawler(Crawler):
         self.grouper = get_grouper(grouper_name)
 
         self._get_transfer_client()
-        make_queue(self.sqs_queue_name, self.aws_access,
-                   self.aws_secret,
-                   self.region_name)
+        make_queue(self.sqs_conn, self.sqs_queue_name)
 
     def crawl(self):
         """Non-blocking method for starting local crawl.
@@ -194,11 +185,14 @@ class GlobusCrawler(Crawler):
                     time.sleep(1)
 
             self.push_threads_status[thread_id] = "WORKING"
-            message = self.push_queue.get()
+            messages = []
 
-            put_message(message, self.sqs_queue_name,
-                        self.aws_access, self.aws_secret,
-                        self.region_name)
+            while not(self.push_queue.empty()) and len(messages) < 10:
+                message = self.push_queue.get()
+                messages.append(message)
+
+            put_messages(self.sqs_conn, messages, self.sqs_queue_name)
+
 
     def _get_transfer_client(self):
         """Sets self.tc to Globus transfer client using
