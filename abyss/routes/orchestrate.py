@@ -28,8 +28,8 @@ def launch():
         Authorization token to transfer Globus files.
     compressed_files: list(str)
         List of compressed data to crawl and process.
-    grouper : str
-        Name of grouper to group decompressed data.
+    groupers : str
+        Name of groupers to group decompressed data.
     worker_params: list(dict)
         List of dictionary entries for each compute worker. Dictionary
         should include globus_dest_eid (Globus endpoint ID), funcx_eid

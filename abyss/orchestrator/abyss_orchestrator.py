@@ -6,7 +6,7 @@ REQUIRED_PARAMETERS = [
             ("auth_token", str),
             ("transfer_token", str),
             ("compressed_files", list),
-            ("grouper", str),
+            ("groupers", str),
             ("worker_params", list)
         ]
 
