@@ -1,5 +1,5 @@
 from xtract_sdk.packagers import Group, Family
-from abyss.grouper.grouper import Grouper
+from abyss.groupers.grouper import Grouper
 
 
 class SimpleGrouper(Grouper):
