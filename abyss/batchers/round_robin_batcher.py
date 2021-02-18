@@ -18,7 +18,7 @@ class RoundRobinBatcher(Batcher):
 
         self._batch()
 
-    def batch_job(self, job: Dict):
+    def batch_job(self, job: Dict) -> None:
         """Places job in queue to be scheduled.
 
         Parameters
@@ -37,7 +37,9 @@ class RoundRobinBatcher(Batcher):
         else:
             self.job_queue.put(job)
 
-    def batch_jobs(self, jobs: List[Dict]):
+        self._batch()
+
+    def batch_jobs(self, jobs: List[Dict]) -> None:
         """Places batch of jobs in queue to be scheduled.
 
         Parameters
@@ -50,12 +52,20 @@ class RoundRobinBatcher(Batcher):
         -------
         None
         """
-        for job in jobs:
-            self.batch_job(job)
+        self.validate_jobs(jobs)
 
-    def _batch(self):
+        for job in jobs:
+            if self._is_failed_job(job):
+                self.failed_jobs.append(job)
+            else:
+                self.job_queue.put(job)
+
+        self._batch()
+
+    def _batch(self) -> None:
         """Schedules jobs using a round robin method. This method goes
-        through each item in the queue
+        through each item in the job queue and batches jobs to workers
+        in a cyclic fashion.
 
         Returns
         -------

@@ -14,7 +14,8 @@ class Batcher(ABC):
         """Base class for creating batchers. Batchers take in worker
         objects and an initial list of jobs and distributes jobs amongst
         workers such that the total size of jobs < available space on
-        worker.
+        worker. An ideal batcher would minimize the maximum difference
+        between the available space on worker and total size of jobs.
 
         Parameters
         ----------
@@ -27,6 +28,7 @@ class Batcher(ABC):
         self.workers = workers
         self.jobs = []
         self.worker_batches = dict()
+        self.worker_dict = dict()
         self.failed_jobs = []
 
         self.validate_jobs(self.jobs)
@@ -39,6 +41,9 @@ class Batcher(ABC):
 
         for worker in workers:
             self.worker_batches[worker.worker_id] = []
+
+        for worker in workers:
+            self.worker_dict[worker.worker_id] = worker
 
     @staticmethod
     def validate_jobs(jobs):
