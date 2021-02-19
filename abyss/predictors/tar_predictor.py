@@ -1,11 +1,14 @@
+import os
 import numpy as np
+import math
 import pandas as pd
 import pickle as pkl
-from predictors.predictor import Predictor
+from typing import Optional
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
-from typing import Optional
+from abyss.predictors import Predictor
+from abyss.definitions import ROOT_DIR
 
 
 class TarPredictor(Predictor):
@@ -29,7 +32,7 @@ class TarPredictor(Predictor):
         return Predictor.get_extension(file_path) == ".tar"
 
     @staticmethod
-    def train_model(data_path: Optional[str] = "../tar_decompression_results.csv",
+    def train_model(data_path: Optional[str] = "../../data/tar_decompression_results.csv",
                     save_path: Optional[str] = "tar_model.pkl") -> None:
         """Trains and saves a predictor model.
 
@@ -54,7 +57,7 @@ class TarPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path: Optional[str] = "tar_model.pkl") -> None:
+    def load_model(self, load_path: Optional[str] = os.path.join(ROOT_DIR, "predictors/tar_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters
@@ -85,7 +88,7 @@ class TarPredictor(Predictor):
 
         x = np.array([file_size]).reshape(1, -1)
 
-        return self.model.predict(x)[0]
+        return int(math.ceil(self.model.predict(x)[0]))
 
 
 if __name__ == "__main__":

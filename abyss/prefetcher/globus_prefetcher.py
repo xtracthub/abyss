@@ -2,7 +2,7 @@ import threading
 import time
 import uuid
 from queue import Queue
-from typing import List
+from typing import List, Union
 
 import globus_sdk
 
@@ -86,7 +86,7 @@ class GlobusPrefetcher:
 
         self._start_thread()
 
-    def get_transfer_status(self, file_path: str) -> str:
+    def get_transfer_status(self, file_path: str) -> Union[str, None]:
         """Retrieves the transfer status of a file path.
 
         Parameters
@@ -100,8 +100,11 @@ class GlobusPrefetcher:
             Transfer status of file path. Either "QUEUED", "ACTIVE",
             "SUCCESS", or "FAILED".
         """
-        status = self.id_status[self.file_id_mapping[file_path]]
-        return status
+        try:
+            status = self.id_status[self.file_id_mapping[file_path]]
+            return status
+        except KeyError:
+            return None
 
     def _start_thread(self) -> None:
         """Spins up threads to process jobs from queue.

@@ -1,6 +1,6 @@
-from predictors.predictor import Predictor
-from predictors.tar_predictor import TarPredictor
-from predictors.gzip_predictor import GZipPredictor
+from abyss.predictors.predictor import Predictor
+from abyss.predictors.tar_predictor import TarPredictor
+from abyss.predictors.gzip_predictor import GZipPredictor
 
 FILE_PREDICTOR_MAPPING = {
     ".tar": TarPredictor,
