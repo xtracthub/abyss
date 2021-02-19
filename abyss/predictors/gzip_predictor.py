@@ -1,9 +1,12 @@
+import os
 import numpy as np
+import math
 import pandas as pd
 import pickle as pkl
-from predictors.predictor import Predictor
-from sklearn.linear_model import LinearRegression
 from typing import Optional
+from sklearn.linear_model import LinearRegression
+from abyss.definitions import ROOT_DIR
+from abyss.predictors.predictor import Predictor
 
 
 class GZipPredictor(Predictor):
@@ -27,7 +30,7 @@ class GZipPredictor(Predictor):
         return Predictor.get_extension(file_path) == ".gz"
 
     @staticmethod
-    def train_model(data_path: Optional[str] = "../data/gzip_decompression_results.csv",
+    def train_model(data_path: Optional[str] = "../../data/gzip_decompression_results.csv",
                     save_path: Optional[str] = "gzip_model.pkl") -> None:
         """Trains and saves a predictor model.
 
@@ -51,7 +54,7 @@ class GZipPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path: Optional[str] = "gzip_model.pkl") -> None:
+    def load_model(self, load_path: Optional[str] = os.path.join(ROOT_DIR, "predictors/gzip_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters
@@ -82,7 +85,7 @@ class GZipPredictor(Predictor):
 
         x = np.array([file_size]).reshape(1, -1)
 
-        return self.model.predict(x)[0]
+        return int(math.ceil(self.model.predict(x)[0]))
 
 
 if __name__ == "__main__":

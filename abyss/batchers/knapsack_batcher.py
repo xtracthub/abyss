@@ -6,7 +6,7 @@ from abyss.orchestrator.worker import Worker
 
 
 class KnapsackBatcher(Batcher):
-    def __init__(self, workers: List[Worker], jobs: List[Dict], **kwargs):
+    def __init__(self, workers: List[Worker], **kwargs):
         """Batches using a Knapsack heuristic. The purpose of
         this batcher is to maximize the size of each worker batch while
         ensuring that batch size < worker available space. This is
@@ -45,14 +45,12 @@ class KnapsackBatcher(Batcher):
                 Factor to divide available space and job size by.
                 Defaults to 10 ** 7 (1MB).
         """
-        super().__init__(workers, jobs)
+        super().__init__(workers)
 
         if "capacity_buffer" in kwargs:
             self.capacity_buffer = kwargs["capacity_buffer"]
         else:
             self.capacity_buffer = 10 ** 7
-
-        self._batch()
 
     def batch_job(self, job: Dict) -> None:
         """Places job in queue to be scheduled.

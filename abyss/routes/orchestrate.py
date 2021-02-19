@@ -26,8 +26,9 @@ def launch():
         Authorization token to access source Globus data storage.
     transfer_token : str
         Authorization token to transfer Globus files.
-    compressed_files: list(str)
-        List of compressed data to crawl and process.
+    compressed_files: list(dict)
+        List of dictionaries containing compressed file path and
+        compressed file size.
     groupers : str
         Name of groupers to group decompressed data.
     worker_params: list(dict)

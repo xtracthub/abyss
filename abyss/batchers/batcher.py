@@ -10,7 +10,7 @@ REQUIRED_JOB_PARAMETERS = {
 
 
 class Batcher(ABC):
-    def __init__(self, workers: List[Worker], jobs: List[Dict]):
+    def __init__(self, workers: List[Worker]):
         """Base class for creating batchers. Batchers take in worker
         objects and an initial list of jobs and distributes jobs amongst
         workers such that the total size of jobs < available space on
@@ -30,14 +30,6 @@ class Batcher(ABC):
         self.worker_batches = dict()
         self.worker_dict = dict()
         self.failed_jobs = []
-
-        self.validate_jobs(self.jobs)
-
-        for job in jobs:
-            if self._is_failed_job(job):
-                self.failed_jobs.append(job)
-            else:
-                self.jobs.append(job)
 
         for worker in workers:
             self.worker_batches[worker.worker_id] = []
