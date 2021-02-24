@@ -1,12 +1,12 @@
-FROM python:3.6
+FROM python:3.7
 
 RUN apt-get update
 
 RUN git clone --single-branch --branch crawler_container https://github.com/xtracthub/abyss /abyss
 
-WORKDIR /abyss/abyss
+WORKDIR /abyss
 
-RUN pip3 install -r crawlers/requirements.txt
+RUN pip3 install -r requirements.txt
 
 ARG aws_secret=aws_secret
 ARG aws_access=aws_access
