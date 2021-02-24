@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo docker build --build-arg aws_secret=$aws_secret --build-arg aws_access=$aws_access --build-arg transfer_token=$transfer_token -t globus-crawler .
+docker build --build-arg aws_secret=$AWS_SECRET --build-arg aws_access=$AWS_ACCESS --build-arg transfer_token=$TRANSFER_TOKEN -t globus-crawler .

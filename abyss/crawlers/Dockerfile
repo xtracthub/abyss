@@ -2,7 +2,7 @@ FROM python:3.6
 
 RUN apt-get update
 
-RUN git clone --single-branch -branch crawler_container https://github.com/xtracthub/abyss /abyss
+RUN git clone --single-branch --branch crawler_container https://github.com/xtracthub/abyss /abyss
 
 WORKDIR /abyss/abyss
 
@@ -16,6 +16,5 @@ ENV AWS_SECRET=$aws_secret
 ENV AWS_ACCESS=$aws_access
 ENV TRANSFER_TOKEN=$transfer_token
 
-WORKDIR /crawlers
 
 CMD ["/bin/bash"]

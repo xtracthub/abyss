@@ -1,6 +1,8 @@
 def run_crawler(base_path, globus_eid, grouper_name,
                 max_crawl_threads=2, max_push_threads=4):
     import os
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
     from abyss.crawlers.globus_crawler.globus_crawler import GlobusCrawler
     from abyss.crawlers.utils.sqs_utils import create_sqs_connection
 
@@ -18,6 +20,9 @@ def run_crawler(base_path, globus_eid, grouper_name,
 
 
 if __name__ == "__main__":
-    run_crawler("/Users/ryan/Documents/CS/abyss",
+    import time
+    t0 = time.time()
+    print(run_crawler("/Users/ryan/Documents/CS/abyss",
                 "5ecf6444-affc-11e9-98d4-0a63aa6b37da",
-                "")
+                ""))
+    print(time.time() - t0)
