@@ -4,16 +4,13 @@ import time
 import uuid
 from queue import Queue
 import globus_sdk
-from xtract_sdk.packagers import Family
 from abyss.crawlers.crawler import Crawler
-from abyss.groupers import get_grouper
+from abyss.crawlers.groupers import get_grouper
 from abyss.utils.sqs_utils import put_messages, make_queue
-from abyss.utils.psql_utils import create_table_entry, update_table_entry, \
-    select_by_column
 
 
 class GlobusCrawler(Crawler):
-    def __init__(self, abyss_id: str, transfer_token: str,
+    def __init__(self, transfer_token: str,
                  globus_eid: str, base_path: str, grouper_name: str,
                  conn, sqs_conn, max_crawl_threads=2, max_push_threads=4):
         """Crawls and groups files within a Globus directory, then pushes
@@ -22,8 +19,6 @@ class GlobusCrawler(Crawler):
 
         Parameters
         ----------
-        abyss_id : str
-            ID of Abyss job running the crawl task.
         transfer_token : str
             Authorization for accessing Globus endpoint.
         globus_eid : str
@@ -41,7 +36,6 @@ class GlobusCrawler(Crawler):
         max_push_threads : str
             Max number of threads to use to push results to SQS.
         """
-        self.abyss_id = abyss_id
         self.transfer_token = transfer_token
         self.globus_eid = globus_eid
         self.base_path = base_path
@@ -57,19 +51,29 @@ class GlobusCrawler(Crawler):
         self.crawl_threads_status = dict()
         self.push_threads_status = dict()
         self.grouper = get_grouper(grouper_name)
+        self.crawl_status = "STARTING"
 
         self._get_transfer_client()
         make_queue(self.sqs_conn, self.sqs_queue_name)
 
-    def crawl(self):
-        """Non-blocking method for starting local crawl.
+    def crawl(self, blocking=True):
+        """Method for starting local crawl.
+
+        Parameters
+        -------
+        blocking : bool
+            Whether crawl method should be blocking.
 
         Returns
         -------
         str
             Crawl ID.
         """
-        threading.Thread(target=self._start_crawl).start()
+        crawl_thread = threading.Thread(target=self._start_crawl)
+        crawl_thread.start()
+
+        if blocking:
+            crawl_thread.join()
 
         return self.crawl_id
 
@@ -81,19 +85,20 @@ class GlobusCrawler(Crawler):
         str
             Crawl status for crawl.
         """
-        crawl_status_entry = select_by_column(self.db_conn, "crawl_status",
-                                              **{"crawl_id": self.crawl_id})
+        # crawl_status_entry = select_by_column(self.db_conn, "crawl_status",
+        #                                       **{"crawl_id": self.crawl_id})
 
-        return crawl_status_entry[0]["crawl_id"]
+        # return crawl_status_entry[0]["crawl_status"]
+        return self.crawl_status
 
     def _start_crawl(self):
         """Internal blocking method for starting local crawl. Starts all
         threads and updates database with crawl status."""
         self.crawl_queue.put(self.base_path)
 
-        create_table_entry(self.db_conn, "crawl_status",
-                           **{"crawl_id": self.crawl_id,
-                              "crawl_status": "STARTING"})
+        # create_table_entry(self.db_conn, "crawl_status",
+        #                    **{"crawl_id": self.crawl_id,
+        #                       "crawl_status": "STARTING"})
 
         crawl_threads = []
         for i in range(self.max_crawl_threads):
@@ -104,9 +109,10 @@ class GlobusCrawler(Crawler):
             crawl_threads.append(thread)
             self.crawl_threads_status[thread_id] = "WORKING"
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "CRAWLING"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "CRAWLING"})
+        self.crawl_status = "CRAWLING"
 
         push_threads = []
         for _ in range(self.max_push_threads):
@@ -120,16 +126,18 @@ class GlobusCrawler(Crawler):
         for thread in crawl_threads:
             thread.join()
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "PUSHING"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "PUSHING"})
+        self.crawl_status = "PUSHING"
 
         for thread in push_threads:
             thread.join()
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "COMPLETE"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "COMPLETE"})
+        self.crawl_status = "SUCCEEDED"
 
     def _thread_crawl(self, thread_id):
         """Crawling thread."""
@@ -192,7 +200,6 @@ class GlobusCrawler(Crawler):
                 messages.append(message)
 
             put_messages(self.sqs_conn, messages, self.sqs_queue_name)
-
 
     def _get_transfer_client(self):
         """Sets self.tc to Globus transfer client using

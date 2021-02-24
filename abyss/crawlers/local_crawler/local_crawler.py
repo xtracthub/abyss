@@ -3,12 +3,9 @@ import threading
 import time
 import uuid
 from queue import Queue
-from xtract_sdk.packagers import Family
 from abyss.crawlers.crawler import Crawler
-from abyss.groupers import get_grouper
+from abyss.crawlers.groupers import get_grouper
 from abyss.utils.sqs_utils import put_messages, make_queue
-from abyss.utils.psql_utils import create_table_entry, update_table_entry, \
-    select_by_column
 
 
 class LocalCrawler(Crawler):
@@ -49,18 +46,28 @@ class LocalCrawler(Crawler):
         self.crawl_threads_status = dict()
         self.push_threads_status = dict()
         self.grouper = get_grouper(grouper_name)
+        self.crawl_status = "STARTING"
 
         make_queue(self.sqs_conn, self.sqs_queue_name)
 
-    def crawl(self):
-        """Non-blocking method for starting local crawl.
+    def crawl(self, blocking=True):
+        """Method for starting local crawl.
+
+        Parameters
+        -------
+        blocking : bool
+            Whether crawl method should be blocking.
 
         Returns
         -------
         str
             Crawl ID.
         """
-        threading.Thread(target=self._start_crawl).start()
+        crawl_thread = threading.Thread(target=self._start_crawl)
+        crawl_thread.start()
+
+        if blocking:
+            crawl_thread.join()
 
         return self.crawl_id
 
@@ -72,19 +79,20 @@ class LocalCrawler(Crawler):
         str
             Crawl status for crawl.
         """
-        crawl_status_entry = select_by_column(self.db_conn, "crawl_status",
-                                              **{"crawl_id": self.crawl_id})
+        # crawl_status_entry = select_by_column(self.db_conn, "crawl_status",
+        #                                       **{"crawl_id": self.crawl_id})
 
-        return crawl_status_entry[0]["crawl_status"]
+        # return crawl_status_entry[0]["crawl_status"]
+        return self.crawl_status
 
     def _start_crawl(self):
         """Internal blocking method for starting local crawl. Starts all
         threads and updates database with crawl status."""
         self.crawl_queue.put(self.base_path)
 
-        create_table_entry(self.db_conn, "crawl_status",
-                           **{"crawl_id": self.crawl_id,
-                              "crawl_status": "STARTING"})
+        # create_table_entry(self.db_conn, "crawl_status",
+        #                    **{"crawl_id": self.crawl_id,
+        #                       "crawl_status": "STARTING"})
 
         crawl_threads = []
         for i in range(self.max_crawl_threads):
@@ -95,9 +103,11 @@ class LocalCrawler(Crawler):
             crawl_threads.append(thread)
             self.crawl_threads_status[thread_id] = "WORKING"
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "CRAWLING"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "CRAWLING"})
+
+        self.crawl_status = "CRAWLING"
 
         for thread in crawl_threads:
             thread.join()
@@ -111,16 +121,20 @@ class LocalCrawler(Crawler):
             push_threads.append(thread)
             self.push_threads_status[thread_id] = "WORKING"
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "PUSHING"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "PUSHING"})
+
+        self.crawl_status = "PUSHING"
 
         for thread in push_threads:
             thread.join()
 
-        update_table_entry(self.db_conn, "crawl_status",
-                           {"crawl_id": self.crawl_id},
-                           **{"crawl_status": "COMPLETE"})
+        # update_table_entry(self.db_conn, "crawl_status",
+        #                    {"crawl_id": self.crawl_id},
+        #                    **{"crawl_status": "COMPLETE"})
+
+        self.crawl_status = "SUCCEEDED"
 
     def _thread_crawl(self, thread_id):
         """Crawling thread."""

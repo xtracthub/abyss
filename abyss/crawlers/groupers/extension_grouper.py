@@ -1,6 +1,6 @@
 from typing import List
 from xtract_sdk.packagers.family import Family
-from abyss.groupers.grouper import Grouper
+from abyss.crawlers.groupers import Grouper
 
 
 class ExtensionGrouper(Grouper):
