@@ -98,7 +98,7 @@ class GlobusPrefetcher:
         -------
         status : str
             Transfer status of file path. Either "QUEUED", "ACTIVE",
-            "SUCCESS", or "FAILED".
+            "SUCCEEDED", or "FAILED".
         """
         try:
             status = self.id_status[self.file_id_mapping[file_path]]
@@ -134,10 +134,8 @@ class GlobusPrefetcher:
             task = self.files_to_transfer.get()
 
             if isinstance(task, list):
-                print("BATCH")
                 self._thread_transfer_batch(task)
             else:
-                print("FILE")
                 self._thread_transfer_file(task)
 
     def _thread_transfer_file(self, file_path):
