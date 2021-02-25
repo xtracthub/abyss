@@ -2,9 +2,9 @@ FROM python:3.7
 
 RUN apt-get update
 
-RUN git clone --single-branch --branch crawler_container https://github.com/xtracthub/abyss /abyss
+RUN git clone https://github.com/xtracthub/abyss /abyss
 
-WORKDIR /abyss
+WORKDIR /abyss/abyss
 
 RUN pip3 install -r requirements.txt
 
