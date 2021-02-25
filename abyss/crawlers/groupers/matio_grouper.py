@@ -2,7 +2,7 @@ from materials_io.utils.interface import get_parser, get_available_parsers
 from uuid import uuid4
 import itertools
 import time
-from abyss.groupers.grouper import Grouper
+from abyss.crawlers.groupers import Grouper
 
 
 import networkx as nx

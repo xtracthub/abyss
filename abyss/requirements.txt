@@ -1,0 +1,12 @@
+numpy
+pandas
+scikit-learn
+tensorflow
+keras
+flask
+globus_sdk
+boto3
+git+https://github.com/materials-data-facility/MaterialsIO.git
+networkx
+xtract_sdk
+psycopg2

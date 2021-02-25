@@ -1,6 +1,6 @@
-from abyss.groupers.grouper import Grouper
-from abyss.groupers.extension_grouper import ExtensionGrouper
-from abyss.groupers.matio_grouper import MatIOGrouper
+from abyss.crawlers.groupers.grouper import Grouper
+from abyss.crawlers.groupers.extension_grouper import ExtensionGrouper
+from abyss.crawlers.groupers.matio_grouper import MatIOGrouper
 
 GROUPER_NAME_MAPPING = {
     "matio": MatIOGrouper,
