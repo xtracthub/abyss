@@ -3,6 +3,8 @@ import os
 import tarfile
 import zipfile
 
+DECOMPRESSOR_FUNCX_UUID = "babf9053-3ff7-4d2d-b523-68cdc68db75a"
+
 
 def decompress_zip(file_path: str, extract_dir: str) -> None:
     """Decompresses .zip files into a directory.
@@ -47,20 +49,6 @@ def decompress_tar(file_path: str, extract_dir: str) -> None:
         tar_f.extractall(extract_dir)
 
 
-def decompress_tar_gz(file_path: str, extract_dir: str) -> None:
-    """Decompresses .tar.gz files into a directory.
-
-    Parameters
-    ----------
-    file_path : str
-        File path to .tar.gz directory.
-    extract_dir : str
-        Path to directory to decompress to.
-    """
-    with tarfile.open(file_path, "r:gz") as tar_gz_f:
-        tar_gz_f.extractall(extract_dir)
-
-
 def is_compressed(file_path: str) -> bool:
     """Determines whether a file is compressed based on file path.
 
@@ -83,7 +71,7 @@ def is_compressed(file_path: str) -> bool:
     return False
 
 
-def decompress(file_path: str, extract_dir: str) -> None:
+def decompress(file_path: str, extract_dir: str) -> str:
     """Recursively decompresses compressed files.
 
     Parameters
@@ -99,19 +87,16 @@ def decompress(file_path: str, extract_dir: str) -> None:
         .gz files are simply decompressed into the extract_dir directory as a
         single file (minus the extension).
 
+    Returns
+    ---------
+    full_extract_dir : str
+        Path file_path is extracted to.
     """
-
     if is_compressed(file_path):
         if file_path.endswith(".zip"):
             full_extract_dir = os.path.join(extract_dir,
                                             os.path.basename(file_path)[:-4])
             decompress_zip(file_path, full_extract_dir)
-
-        elif file_path.endswith(".tar.gz"):
-            full_extract_dir = os.path.join(extract_dir,
-                                            os.path.basename(file_path)[:-7])
-            decompress_tar_gz(file_path, full_extract_dir)
-
         elif file_path.endswith(".tar"):
             full_extract_dir = os.path.join(extract_dir,
                                             os.path.basename(file_path)[:-4])
@@ -122,14 +107,16 @@ def decompress(file_path: str, extract_dir: str) -> None:
                                             os.path.basename(file_path)[:-3])
             decompress_gz(file_path, full_extract_dir)
         else:
-            raise ValueError(f"{file_path} is not a compressed file")
+            raise ValueError(f"{file_path} is not a supported compressed file")
 
-        for path, subdirs, files in os.walk(full_extract_dir):
-            for file in files:
-                if is_compressed(file):
-                    decompress(os.path.join(path, file), path)
+        return full_extract_dir
+    else:
+        raise ValueError(f"{file_path} is not a compressed file")
 
 
 if __name__ == "__main__":
-    with tarfile.open("checkpoint-370.pth.tar", "r:gz") as tar_f:
-        tar_f.extractall("checkpoint-370")
+    from funcx import FuncXClient
+
+    fxc = FuncXClient()
+    id = fxc.register_function(decompress)
+    print(id)
