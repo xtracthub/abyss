@@ -78,9 +78,9 @@ class RoundRobinBatcher(Batcher):
             worker_idx = self.curr_idx
             for idx in range(self.num_workers):
                 worker = self.workers[worker_idx]
-                if worker.available_space >= decompressed_size:
+                if worker.curr_available_space >= decompressed_size:
                     self.worker_batches[worker.worker_id].append(job)
-                    worker.available_space -= decompressed_size
+                    worker.curr_available_space -= decompressed_size
                     break
                 elif idx == self.num_workers - 1:
                     self.job_queue.put(job)
@@ -102,7 +102,7 @@ if __name__ == "__main__":
                               random.randint(1, 10)))
 
     for worker in workers:
-        print(f"Worker {worker.worker_id}: {worker.available_space} bytes")
+        print(f"Worker {worker.worker_id}: {worker.curr_available_space} bytes")
 
     for i in range(10):
         jobs.append({"file_path": f"{i}",

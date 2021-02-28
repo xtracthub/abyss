@@ -1,10 +1,11 @@
+import uuid
 from typing import Dict
 
 
 REQUIRED_WORKER_PARAMETERS = [
     ("globus_eid", str),
     ("funcx_eid", str),
-    ("available_space", int),
+    ("max_available_space", int),
     ("transfer_dir", str),
     ("decompress_dir", str)
 ]
@@ -13,7 +14,7 @@ REQUIRED_WORKER_PARAMETERS = [
 class Worker:
     def __init__(self, globus_eid: str, funcx_eid: str,
                  transfer_dir: str, decompress_dir: str,
-                 available_space: int):
+                 max_available_space: int):
         """Class for holding worker information.
 
         Parameters
@@ -29,8 +30,9 @@ class Worker:
         self.funcx_eid = funcx_eid
         self.transfer_dir = transfer_dir
         self.decompress_dir = decompress_dir
-        self.available_space = available_space
-        self.worker_id = self.funcx_eid
+        self.max_available_space = max_available_space
+        self.curr_available_space = max_available_space
+        self.worker_id = str(uuid.uuid4())
 
     @staticmethod
     def validate_dict_params(worker_params: Dict) -> None:
@@ -78,6 +80,6 @@ class Worker:
                         worker_params["funcx_eid"],
                         worker_params["transfer_dir"],
                         worker_params["decompress_dir"],
-                        worker_params["available_space"])
+                        worker_params["max_available_space"])
         return worker
 

@@ -22,7 +22,7 @@ class MMDBatcher(Batcher):
             List of jobs (dictionaries containing file_path and
             decompressed_size) to batch amongst workers.
         """
-        super().__init__(workers, jobs)
+        super().__init__(workers)
 
         self.job_queue = Queue()
         self.num_workers = len(self.workers)
@@ -88,7 +88,7 @@ class MMDBatcher(Batcher):
         worker_info = []
         for worker in self.workers:
             worker_batch = self.worker_batches[worker.worker_id]
-            available_space = worker.available_space
+            available_space = worker.curr_available_space
             job_batch_size = sum([job["decompressed_size"] for job in worker_batch])
 
             worker_info.append([worker.worker_id,

@@ -1,10 +1,13 @@
+import logging
 import threading
 import time
 import uuid
 from queue import Queue
 from typing import List, Union
-
 import globus_sdk
+
+
+logger = logging.getLogger(__name__)
 
 
 #TODO: Does not properly handle failed transfers. If a transfer fails at
@@ -61,6 +64,8 @@ class GlobusPrefetcher:
             self.file_id_mapping[file_path] = file_id
             self.id_status[file_id] = "QUEUED"
 
+            logger.info(f"{file_path}: QUEUED")
+
         self._start_thread()
 
     def transfer_batch(self, file_paths: List[str]) -> None:
@@ -83,6 +88,8 @@ class GlobusPrefetcher:
                 file_id = uuid.uuid4()
                 self.file_id_mapping[file_path] = file_id
                 self.id_status[file_id] = "QUEUED"
+
+                logger.info(f"{file_path}: QUEUED")
 
         self._start_thread()
 
@@ -164,6 +171,8 @@ class GlobusPrefetcher:
             self.file_id_mapping[file_path] = task_id
             self.id_status[task_id] = "ACTIVE"
 
+            logger.info(f"{file_path}: ACTIVE")
+
         task_data = self.tc.get_task(task_id).data
         while task_data["status"] == "ACTIVE":
             time.sleep(5)
@@ -172,6 +181,8 @@ class GlobusPrefetcher:
         with self.lock:
             self.id_status[task_id] = task_data["status"]
             self.num_current_transfers -= 1
+
+            logger.info(f"{file_path}: {task_data['status']}")
 
     def _thread_transfer_batch(self, file_paths):
         """Thread function for transferring list of files.
@@ -201,6 +212,9 @@ class GlobusPrefetcher:
                 self.file_id_mapping[file_path] = task_id
             self.id_status[task_id] = "ACTIVE"
 
+            for file_path in file_paths:
+                logger.info(f"{file_path}: ACTIVE")
+
         task_data = self.tc.get_task(task_id).data
         while task_data["status"] == "ACTIVE":
             time.sleep(5)
@@ -209,6 +223,9 @@ class GlobusPrefetcher:
         with self.lock:
             self.id_status[task_id] = task_data["status"]
             self.num_current_transfers -= 1
+
+            for file_path in file_paths:
+                logger.info(f"{file_path}: {task_data['status']}")
 
     def _get_transfer_client(self):
         """Sets self.tc to Globus transfer client using

@@ -131,7 +131,7 @@ class KnapsackBatcher(Batcher):
         jobs : list(dict)
             Job batch for worker.
         """
-        available_space = math.ceil(worker.available_space / self.capacity_buffer)
+        available_space = math.ceil(worker.curr_available_space / self.capacity_buffer)
         knapsack_array = np.empty((len(self.jobs) + 1,
                                    available_space + 1))
 

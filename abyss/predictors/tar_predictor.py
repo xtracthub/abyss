@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import math
+import logging
 import pandas as pd
 import pickle as pkl
 from typing import Optional
@@ -9,6 +10,9 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from abyss.predictors import Predictor
 from abyss.definitions import ROOT_DIR
+
+
+logger = logging.getLogger(__name__)
 
 
 class TarPredictor(Predictor):
@@ -68,6 +72,8 @@ class TarPredictor(Predictor):
         with open(load_path, "rb") as f:
             self.model = pkl.load(f)
 
+        logger.info(f"LOADED {load_path} as model")
+
     def predict(self, file_path: str, file_size: float) -> float:
         """Predicts the size of decompressed .tar file.
 
@@ -88,7 +94,11 @@ class TarPredictor(Predictor):
 
         x = np.array([file_size]).reshape(1, -1)
 
-        return int(math.ceil(self.model.predict(x)[0]))
+        decompressed_size = int(math.ceil(self.model.predict(x)[0]))
+
+        logger.info(f"{file_path} DECOMPRESSED SIZE: {decompressed_size}B")
+
+        return decompressed_size
 
 
 if __name__ == "__main__":
