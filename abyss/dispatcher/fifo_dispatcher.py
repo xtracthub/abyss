@@ -24,8 +24,7 @@ class FIFODispatcher(Dispatcher):
         """
         for worker_id, worker_batch in worker_batches.items():
             if worker_id not in self.worker_batches:
-                raise ValueError(
-                    f"Can not insert {worker_id} into worker_batches")
+                raise ValueError(f"Can not insert {worker_id} into worker_batches")
 
             self.worker_batches[worker_id] = worker_batches
 
@@ -43,6 +42,6 @@ class FIFODispatcher(Dispatcher):
             worker_queue = self.worker_queues[worker_id]
 
             for job in worker_batch:
-                worker_queue.put(job)
+                worker_queue.append(job)
 
             self.worker_batches[worker_id] = []

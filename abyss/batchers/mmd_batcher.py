@@ -1,4 +1,3 @@
-import numpy as np
 import math
 from queue import Queue
 from typing import Dict, List
@@ -22,7 +21,7 @@ class MMDBatcher(Batcher):
             List of jobs (dictionaries containing file_path and
             decompressed_size) to batch amongst workers.
         """
-        super().__init__(workers)
+        super().__init__(workers, jobs)
 
         self.job_queue = Queue()
         self.num_workers = len(self.workers)

@@ -90,11 +90,8 @@ The Globus crawler crawls directories via a Globus endpoint.
     - Determine optimum loss function to balance space vs time tradeoff (models that overpredict incur losses in space 
     but models that underpredict incur losses in processing time as they need to be reprocessed).
 ## Scheduler (Batcher + Dispatcher)
-- Create `Scheduler` class, which internally manages both a `Batcher` and `Dispatcher`
-- Add internal method to `Batcher` to update the amount of available space on a worker
-- Have `Batcher` return the created batches rather than changing an internal variable
-    - This will just make it much easier to deal with batches when we make multiple calls to the `Batcher` as jobs are 
-    completed
+- ~~Create `Scheduler` class, which internally manages both a `Batcher` and `Dispatcher`~~
+- ~~Add internal method to `Batcher` to update the amount of available space on a worker~~
 - Create new dispatching strategies
     - Potential dispatchers include a max first dispatcher, a min first dispatcher, and a max-min dispatcher (which 
     alternates between large and small jobs)

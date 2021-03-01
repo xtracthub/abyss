@@ -23,7 +23,7 @@ class Dispatcher(ABC):
         self.worker_queues = dict()
 
         for worker in workers:
-            self.worker_queues[worker.worker_id] = Queue()
+            self.worker_queues[worker.worker_id] = []
 
     @abstractmethod
     def dispatch_batch(self, worker_batches: Dict):

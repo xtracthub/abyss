@@ -10,7 +10,7 @@ REQUIRED_JOB_PARAMETERS = {
 
 
 class Batcher(ABC):
-    def __init__(self, workers: List[Worker]):
+    def __init__(self, workers: List[Worker], jobs: List[Dict]):
         """Base class for creating batchers. Batchers take in worker
         objects and an initial list of jobs and distributes jobs amongst
         workers such that the total size of jobs < available space on
@@ -26,7 +26,7 @@ class Batcher(ABC):
             decompressed_size) to batch amongst workers.
         """
         self.workers = workers
-        self.jobs = []
+        self.jobs = jobs
         self.worker_batches = dict()
         self.worker_dict = dict()
         self.failed_jobs = []
@@ -80,3 +80,22 @@ class Batcher(ABC):
                 return False
 
         return True
+
+    def update_worker(self, worker: Worker) -> None:
+        """Updates a worker. If the current available size of a worker
+        is changed, then batches will be updated.
+
+        Parameters
+        ----------
+        worker : Worker
+            Worker to be updated in batcher.
+
+        Returns
+        -------
+        None
+        """
+        try:
+            self.worker_dict[worker.worker_id] = worker
+            self._batch()
+        except KeyError:
+            raise ValueError(f"Worker {worker.worker_id} does not already exist")
