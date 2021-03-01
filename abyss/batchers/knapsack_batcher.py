@@ -22,9 +22,9 @@ class KnapsackBatcher(Batcher):
         constraints. To solve this, a capacity_buffer variable is used
         to divide the size of jobs and available space in order to
         reduce the size and time complexity of this algorithm. With a
-        capacity buffer B, the time and space complexity is now
-        O(N*C/B). However, this results in wasted space with an upper
-        bound of N*B.
+        capacity interval I, the time and space complexity is now
+        O(N*C/I). However, this results in wasted space with an upper
+        bound of N*I.
 
         Since this batcher calculates the optimal batch for each worker
         independently from each other, this heuristic produces a locally

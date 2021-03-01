@@ -1,2 +1,107 @@
 # Abyss
-Work in progress. Something to do with UMichigan's *Deep Blue* dataset, hence the name Abyss.
+Abyss is a distributed system for decompressing and processing large compressed data.  
+  
+The purpose of Abyss is to decompress and process compressed data as quickly as possible given both computing and 
+storage constraints. 
+
+# Architecture
+Compressed data first begins at a storage unit with a Globus endpoint. Users pass the compressed data to be processed as 
+well as **worker** information to Abyss. **Workers** are both storage and compute units with some sort of restriction on 
+maximum available storage. Abyss then creates an **orchestrator** to decompress and process each compressed file on the 
+given workers. 
+
+The orchestration process consists of 7 steps: prediction, batching, dispatching, prefetching, decompressing, crawling, 
+and metadata consolidation, all of which happen asynchronously.   
+  
+First, the decompressed size of each compressed file is predicted.  
+  
+Then, the compressed files are broken up into batches for each worker, such that the total decompressed size of each batch is less than the 
+amount of available space on the worker.  
+  
+Then, each item in a batch is organized in the order that it is to be dispatched for processing on a worker. Then, each item is prefetched (transferred) to the worker from the initial 
+storage location.  
+  
+Then, each compressed file is decompressed onto the worker. Any files that encounter OOM errors while 
+decompressing will be resent to the orchestrator for reprocessing with a larger decompressed size estimation.  
+  
+Then, each decompressed file will then be crawled and physical file metadata (e.g. size, name, extension) will be 
+collected. Additionally, crawlers can utilize **groupers** to generate additional file metadata during crawl time.  
+  
+Finally, the file metadata for each file is consolidated to be returned to the user.
+
+## Predictors
+Predictors utilize machine learning to predict the decompressed size of a file using the compressed size of compressed 
+data. The models for predictors are individually created for each type of compressed file. Supported compressed 
+extensions include `.tar`, `.gz`, `.zip`.  
+  
+## Batchers
+Batchers take the list of compressed files and their decompressed sizes as well as worker information and divides up the 
+compressed files amongst each worker for processing. The size of each batch is constrained by the maxmimum amount of 
+storage space available on the worker that is to process the batch. Therefore, the total decompressed size of each batch 
+is less than the amount of available space on the worker. Current batchers include the `knapsack` and `mmd` batcher.
+
+### Knapsack Batcher
+The Knapsack Batcher utilizes the 0-1 knapsack algorithm to sequentially maximize batch size for each worker. In this 
+scenario, this algorithm is actually a heuristic as it maximizes each individual batch size but may not maximize the 
+batch size for all batches. This algorithm operates in `O(N*C/I)` time and space, where `N` is the number of compressed 
+files to batch, `C` is the capacity of the worker to create a batch for in bytes, and `I` is a user-defined variable 
+called the **capacity interval**. The capacity interval is used to reduce the size and space complexity of this 
+heuristic, as `C` is often in the range of `10^9-10^11`. However, it results in a maximum error of `N*I`. It should be 
+noted that this batcher optimizes used space but may not result in "fair" job distribution.  
+
+### MMD Batcher
+The MMD batcher is a greedy algorithm which aims to minimize the maximum difference mean batch size difference between 
+workers. This batcher aims to be a more "fair" approach for batching. 
+
+## Dispatchers
+Dispatchers order the items within a batch into the order in which they should be processed.
+
+### LIFO Dispatcher
+The LIFO Dispatcher simply treats the batch as a LIFO queue.
+
+## Prefetcher
+The prefetcher concurrently transfers files between two Globus endpoints.
+
+## Decompressors
+Decompressors decompress compressed files on workers. Currently, decompressors are invoked using a funcX function, 
+meaning that decompressors currently must only use standard Python libraries. Current decompressors include `.tar`, 
+`.gz`, `.zip`
+
+## Crawlers
+Crawlers crawl through decompressed directories and aggregate physical file metadata. Crawlers can additionally support 
+the usage of **Groupers**, which can generate more physical file metadata. Supported crawlers include the Globus crawler.
+
+### Globus Crawler    
+The Globus crawler crawls directories via a Globus endpoint.
+
+# TODOs:
+
+## Orchestrator
+- Add logic to handle crawler metadata
+    - Consolidate metadata for a single directory into one dictionary and push to SQS
+    - How do we want to handle recursively compressed data (like `.tar.gz`)?
+        - It could be costly to re-transfer files if we've already decompressed a file on a worker
+        - Decompressing additional data could result in OOM errors
+        - Most likely will need to add additional logic in orchestrator to reprocess data.
+## Predictors
+- Create `.zip` predictor
+- Switch to `Keras` models instead of `sklearn` models
+    - `Keras` models provide the opportunity to use custom loss functions
+    - Determine optimum loss function to balance space vs time tradeoff (models that overpredict incur losses in space 
+    but models that underpredict incur losses in processing time as they need to be reprocessed).
+## Scheduler (Batcher + Dispatcher)
+- Create `Scheduler` class, which internally manages both a `Batcher` and `Dispatcher`
+- Add internal method to `Batcher` to update the amount of available space on a worker
+- Have `Batcher` return the created batches rather than changing an internal variable
+    - This will just make it much easier to deal with batches when we make multiple calls to the `Batcher` as jobs are 
+    completed
+- Create new dispatching strategies
+    - Potential dispatchers include a max first dispatcher, a min first dispatcher, and a max-min dispatcher (which 
+    alternates between large and small jobs)
+    - Determine the effect of using these dispatchers over a LIFO dispatcher. Might not have a super large benefit since 
+    funcX internally handles scheduling for nodes on workers
+## Crawlers   
+- Improve file throughput of crawler
+    - Pushing to SQS takes an awfully long time, perhaps just spinning up more threads will solve the issue.
+    - It might be better just for the crawler to return a massive metadata dictionary
+        - Results can just be returned via funcX and will reduce in significantly less overhead from using SQS
