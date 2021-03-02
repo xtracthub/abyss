@@ -3,11 +3,12 @@ from queue import Queue
 from typing import Dict, List
 
 from abyss.batchers.batcher import Batcher
+from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
 
 
 class MMDBatcher(Batcher):
-    def __init__(self, workers: List[Worker], jobs: List[Dict]):
+    def __init__(self, workers: List[Worker], jobs: List[Job]):
         """Batches jobs by using a greedy algorithm to minimize the mean
         difference between workers's jobs to create "fair" batching. For
         each job, the batcher chooses to place the job in a worker such
@@ -18,9 +19,8 @@ class MMDBatcher(Batcher):
         ----------
         workers : list(Worker)
             List of Worker objects to batch jobs amongst.
-        jobs : list(dict)
-            List of jobs (dictionaries containing file_path and
-            decompressed_size) to batch amongst workers.
+        jobs : list(Job)
+            List of Jobs to batch amongst workers.
         """
         super().__init__(workers, jobs)
 
@@ -33,20 +33,18 @@ class MMDBatcher(Batcher):
 
         self._batch()
 
-    def batch_job(self, job: Dict) -> None:
-        """Places job in queue to be scheduled.
+    def batch_job(self, job: Job) -> None:
+        """Places job in queue to be batched.
 
         Parameters
         ----------
-        job : dict
-            Dictionary with file path and size of decompressed file.
+        job : Job
+            Job object.
 
         Returns
         -------
         None
         """
-        self.validate_jobs([job])
-
         if self._is_failed_job(job):
             self.failed_jobs.append(job)
         else:
@@ -54,21 +52,18 @@ class MMDBatcher(Batcher):
 
         self._batch()
 
-    def batch_jobs(self, jobs: List[Dict]) -> None:
-        """Places batch of jobs in queue to be scheduled.
+    def batch_jobs(self, jobs: List[Job]) -> None:
+        """Places batch of jobs in queue to be batched.
 
         Parameters
         ----------
         jobs : list(dict)
-            List of dictionaries with file path and size of decompressed
-            file.
+            List of Jobs.
 
         Returns
         -------
         None
         """
-        self.validate_jobs(jobs)
-
         for job in jobs:
             if self._is_failed_job(job):
                 self.failed_jobs.append(job)
@@ -89,7 +84,7 @@ class MMDBatcher(Batcher):
         for worker in self.workers:
             worker_batch = self.worker_batches[worker.worker_id]
             available_space = worker.curr_available_space
-            job_batch_size = sum([job["decompressed_size"] for job in worker_batch])
+            job_batch_size = sum([job.decompressed_size for job in worker_batch])
 
             worker_info.append([worker.worker_id,
                                 job_batch_size,
@@ -97,7 +92,7 @@ class MMDBatcher(Batcher):
 
         for _ in range(self.job_queue.qsize()):
             job = self.job_queue.get()
-            decompressed_size = job["decompressed_size"]
+            decompressed_size = job.decompressed_size
             worker_info.sort(key=lambda x: (x[1] + decompressed_size)/x[2] if x[2] > 0 else math.inf)
 
             for idx, worker_info_tuple in enumerate(worker_info):

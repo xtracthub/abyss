@@ -1,14 +1,15 @@
 import math
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 
 from abyss.batchers.batcher import Batcher
+from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
 
 
 class KnapsackBatcher(Batcher):
-    def __init__(self, workers: List[Worker], jobs: List[Dict], **kwargs):
+    def __init__(self, workers: List[Worker], jobs: List[Job], **kwargs):
         """Batches using a Knapsack heuristic. The purpose of
         this batcher is to maximize the size of each worker batch while
         ensuring that batch size < worker available space. This is
@@ -39,9 +40,8 @@ class KnapsackBatcher(Batcher):
         ----------
         workers : list(Worker)
             List of Worker objects to batch jobs amongst.
-        jobs : list(dict)
-            List of jobs (dictionaries containing file_path and
-            decompressed_size) to batch amongst workers.
+        jobs : list(Job)
+            List of Jobs to batch amongst workers.
         kwargs
             capacity_buffer : int
                 Factor to divide available space and job size by.
@@ -56,20 +56,18 @@ class KnapsackBatcher(Batcher):
 
         self._batch()
 
-    def batch_job(self, job: Dict) -> None:
+    def batch_job(self, job: Job) -> None:
         """Places job in queue to be batched.
 
         Parameters
         ----------
-        job : dict
-            Dictionary with file path and size of decompressed file.
+        job : Job
+            Job object.
 
         Returns
         -------
         None
         """
-        self.validate_jobs([job])
-
         if self._is_failed_job(job):
             self.failed_jobs.append(job)
         else:
@@ -77,21 +75,18 @@ class KnapsackBatcher(Batcher):
 
         self._batch()
 
-    def batch_jobs(self, jobs: List[Dict]) -> None:
+    def batch_jobs(self, jobs: List[Job]) -> None:
         """Places batch of jobs in queue to be batched.
 
         Parameters
         ----------
         jobs : list(dict)
-            List of dictionaries with file path and size of decompressed
-            file.
+            List of Jobs.
 
         Returns
         -------
         None
         """
-        self.validate_jobs(jobs)
-
         for job in jobs:
             if self._is_failed_job(job):
                 self.failed_jobs.append(job)
@@ -112,16 +107,16 @@ class KnapsackBatcher(Batcher):
         for worker in self.workers:
             jobs = self._get_knapsack_items(worker)
 
-            assert sum([job["decompressed_size"] for job in jobs]) <= worker.available_space
+            assert sum([job.decompressed_size for job in jobs]) <= worker.available_space
 
             for job in jobs:
-                decompressed_size = job["decompressed_size"]
+                decompressed_size = job.decompressed_size
                 worker.available_space -= decompressed_size
 
                 self.worker_batches[worker.worker_id].append(job)
                 self.jobs.remove(job)
 
-    def _get_knapsack_items(self, worker) -> List[Dict]:
+    def _get_knapsack_items(self, worker) -> List[Job]:
         """Determines job batch for single worker using 0-1 Knapsack
         algorithm.
 
@@ -132,7 +127,7 @@ class KnapsackBatcher(Batcher):
 
         Returns
         -------
-        jobs : list(dict)
+        jobs : list(Job)
             Job batch for worker.
         """
         available_space = math.ceil(worker.curr_available_space / self.capacity_buffer)
@@ -140,7 +135,7 @@ class KnapsackBatcher(Batcher):
                                    available_space + 1))
 
         for i in range(len(self.jobs) + 1):
-            last_item_size = math.ceil(self.jobs[i - 1]["decompressed_size"] / self.capacity_buffer)
+            last_item_size = math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
             for j in range(available_space + 1):
                 if i == 0 or j == 0:
                     knapsack_array[i][j] = 0
@@ -162,8 +157,8 @@ class KnapsackBatcher(Batcher):
                 continue
             else:
                 jobs.append(self.jobs[i - 1])
-                res -= math.ceil(self.jobs[i - 1]["decompressed_size"] / self.capacity_buffer)
-                available_space -= math.ceil(self.jobs[i - 1]["decompressed_size"] / self.capacity_buffer)
+                res -= math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
+                available_space -= math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
 
         return jobs
 

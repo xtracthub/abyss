@@ -102,6 +102,8 @@ The Globus crawler crawls directories via a Globus endpoint.
     - Determine the effect of using these dispatchers over a LIFO dispatcher. Might not have a super large benefit since 
     funcX internally handles scheduling for nodes on workers
 - Write a ton of tests
+## Prefetcher
+- Handle failed transfers
 ## Crawlers   
 - ~~Improve file throughput of crawler~~
     - ~~Pushing to SQS takes an awfully long time, perhaps just spinning up more threads will solve the issue.~~

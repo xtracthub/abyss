@@ -1,6 +1,4 @@
 import uuid
-from typing import Dict
-
 
 REQUIRED_WORKER_PARAMETERS = [
     ("globus_eid", str),
@@ -39,7 +37,7 @@ class Worker:
         self.worker_id = str(uuid.uuid4())
 
     @staticmethod
-    def validate_dict_params(worker_params: Dict) -> None:
+    def validate_dict_params(worker_params: dict) -> None:
         """Ensures dictionary of worker parameters contains
         necessary parameters.
 
@@ -62,10 +60,10 @@ class Worker:
                 f"Worker parameter {parameter_name} is not of type {parameter_type}")
         except KeyError:
             raise ValueError(
-                f"Worker parameter parameter {parameter_name} not found")
+                f"Worker parameter {parameter_name} not found")
 
     @staticmethod
-    def from_dict(worker_params: Dict) -> Worker:
+    def from_dict(worker_params: dict):
         """Factory method for creating Worker objects from dictionary.
 
         Parameters

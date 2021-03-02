@@ -2,12 +2,20 @@ import logging
 import threading
 import time
 import uuid
+from enum import Enum
 from queue import Queue
 from typing import List, Union
 
 import globus_sdk
 
 logger = logging.getLogger(__name__)
+
+
+class PrefetcherStatuses:
+    QUEUED = "QUEUED"
+    ACTIVE = "ACTIVE"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
 
 
 #TODO: Does not properly handle failed transfers. If a transfer fails at
@@ -62,7 +70,7 @@ class GlobusPrefetcher:
             # Dummy UUID until file is actually submitted
             file_id = uuid.uuid4()
             self.file_id_mapping[file_path] = file_id
-            self.id_status[file_id] = "QUEUED"
+            self.id_status[file_id] = PrefetcherStatuses.QUEUED
 
             logger.info(f"{file_path}: QUEUED")
 
@@ -87,7 +95,7 @@ class GlobusPrefetcher:
                 # Dummy UUID until file is actually submitted
                 file_id = uuid.uuid4()
                 self.file_id_mapping[file_path] = file_id
-                self.id_status[file_id] = "QUEUED"
+                self.id_status[file_id] = PrefetcherStatuses.QUEUED
 
                 logger.info(f"{file_path}: QUEUED")
 
@@ -169,7 +177,7 @@ class GlobusPrefetcher:
 
         with self.lock:
             self.file_id_mapping[file_path] = task_id
-            self.id_status[task_id] = "ACTIVE"
+            self.id_status[task_id] = PrefetcherStatuses.ACTIVE
 
             logger.info(f"{file_path}: ACTIVE")
 
@@ -210,7 +218,7 @@ class GlobusPrefetcher:
         with self.lock:
             for file_path in file_paths:
                 self.file_id_mapping[file_path] = task_id
-            self.id_status[task_id] = "ACTIVE"
+            self.id_status[task_id] = PrefetcherStatuses.ACTIVE
 
             for file_path in file_paths:
                 logger.info(f"{file_path}: ACTIVE")
