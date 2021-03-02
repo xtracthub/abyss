@@ -23,8 +23,12 @@ class Worker:
             Globus endpoint ID located at worker.
         funcx_eid : str
             FuncX endpoint ID located at worker.
-        available_space : int
-            Space available on worker.
+        transfer_dir : str
+            Directory to transfer files to.
+        decompress_dir : str
+            Directory to decompress files to.
+        max_available_space : int
+            Maximum available space on worker.
         """
         self.globus_eid = globus_eid
         self.funcx_eid = funcx_eid
@@ -61,7 +65,7 @@ class Worker:
                 f"Worker parameter parameter {parameter_name} not found")
 
     @staticmethod
-    def from_dict(worker_params: Dict):
+    def from_dict(worker_params: Dict) -> Worker:
         """Factory method for creating Worker objects from dictionary.
 
         Parameters

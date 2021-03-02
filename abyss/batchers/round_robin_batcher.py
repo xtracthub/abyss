@@ -1,11 +1,22 @@
 from queue import Queue
 from typing import Dict, List
-from abyss.orchestrator.worker import Worker
+
 from abyss.batchers.batcher import Batcher
+from abyss.orchestrator.worker import Worker
 
 
 class RoundRobinBatcher(Batcher):
     def __init__(self, workers: List[Worker], jobs: List[Dict]):
+        """Batches jobs using a round robin method.
+
+        Parameters
+        ----------
+        workers : list(Worker)
+            List of Worker objects to batch jobs amongst.
+        jobs : list(dict)
+            List of jobs (dictionaries containing file_path and
+            decompressed_size) to batch amongst workers.
+        """
         super().__init__(workers, jobs)
 
         self.job_queue = Queue()

@@ -4,8 +4,8 @@ import time
 import uuid
 from queue import Queue
 from typing import List, Union
-import globus_sdk
 
+import globus_sdk
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ class GlobusPrefetcher:
                 with self.lock:
                     self.num_current_transfers += 1
 
-    def _thread_transfer(self):
+    def _thread_transfer(self) -> None:
         """Thread function for submitting transfer tasks and waiting for
         results.
 
@@ -145,7 +145,7 @@ class GlobusPrefetcher:
             else:
                 self._thread_transfer_file(task)
 
-    def _thread_transfer_file(self, file_path):
+    def _thread_transfer_file(self, file_path: str) -> None:
         """Thread function for transferring individual files.
 
         Parameters
@@ -184,7 +184,7 @@ class GlobusPrefetcher:
 
             logger.info(f"{file_path}: {task_data['status']}")
 
-    def _thread_transfer_batch(self, file_paths):
+    def _thread_transfer_batch(self, file_paths: List[str]) -> None:
         """Thread function for transferring list of files.
 
         Parameters
@@ -227,7 +227,7 @@ class GlobusPrefetcher:
             for file_path in file_paths:
                 logger.info(f"{file_path}: {task_data['status']}")
 
-    def _get_transfer_client(self):
+    def _get_transfer_client(self) -> None:
         """Sets self.tc to Globus transfer client using
         self.transfer_token as authorization.
 

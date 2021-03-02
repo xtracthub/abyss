@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List
-from abyss.orchestrator.worker import Worker
 
+from abyss.orchestrator.worker import Worker
 
 REQUIRED_JOB_PARAMETERS = {
     "file_path": str,
@@ -38,7 +38,19 @@ class Batcher(ABC):
             self.worker_dict[worker.worker_id] = worker
 
     @staticmethod
-    def validate_jobs(jobs):
+    def validate_jobs(jobs: List[Dict]) -> None:
+        """Ensures job dictionaries contain parameters of the correct type.
+
+        Parameters
+        ----------
+        jobs : list(dict)
+            List of jobs (dictionaries containing file_path and
+            decompressed_size) to validate.
+
+        Returns
+        -------
+        None
+        """
         try:
             for job in jobs:
                 for parameter_name, parameter_type in REQUIRED_JOB_PARAMETERS.items():
@@ -50,15 +62,39 @@ class Batcher(ABC):
             raise ValueError(f"Required parameter {parameter_name} not found")
 
     @abstractmethod
-    def batch_job(self, job: Dict):
+    def batch_job(self, job: Dict) -> None:
+        """Places job in queue to be batched.
+
+        Parameters
+        ----------
+        job : dict
+            Dictionary with file path and size of decompressed file.
+
+        Returns
+        -------
+        None
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def batch_jobs(self, jobs: List[Dict]):
+    def batch_jobs(self, jobs: List[Dict]) -> None:
+        """Places batch of jobs in queue to be batched.
+
+        Parameters
+        ----------
+        jobs : list(dict)
+            List of dictionaries with file path and size of decompressed
+            file.
+
+        Returns
+        -------
+        None
+        """
         raise NotImplementedError
 
     @abstractmethod
     def _batch(self):
+        """Internal method for batching jobs."""
         raise NotImplementedError
 
     def _is_failed_job(self, job: Dict) -> bool:

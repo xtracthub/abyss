@@ -1,22 +1,24 @@
-import os
-import numpy as np
-import math
 import logging
-import pandas as pd
+import math
+import os
 import pickle as pkl
 from typing import Optional
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
-from abyss.predictors import Predictor
-from abyss.definitions import ROOT_DIR
 
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
+
+from abyss.definitions import ROOT_DIR
+from abyss.predictors import Predictor
 
 logger = logging.getLogger(__name__)
 
 
 class TarPredictor(Predictor):
     def __init__(self):
+        """Predictor for .tar files."""
         super().__init__()
 
     @staticmethod
@@ -74,19 +76,19 @@ class TarPredictor(Predictor):
 
         logger.info(f"LOADED {load_path} as model")
 
-    def predict(self, file_path: str, file_size: float) -> float:
+    def predict(self, file_path: str, file_size: int) -> int:
         """Predicts the size of decompressed .tar file.
 
         Parameters
         ----------
         file_path : str
             Path of compressed file to predict on.
-        file_size : float
+        file_size : int
             Size of compressed file to predict on.
 
         Returns
         -------
-        float
+        int
             Prediction of decompressed .tar file size.
         """
         if not self.model:

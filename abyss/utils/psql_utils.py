@@ -1,11 +1,11 @@
 import logging
 import os
-import psycopg2
-import psycopg2.extras
 from configparser import ConfigParser
-from flask import Flask
 from typing import List, Dict
 
+import psycopg2
+import psycopg2.extras
+from flask import Flask
 
 ABYSS_STATUS = {
     "abyss_id": "TEXT PRIMARY KEY",

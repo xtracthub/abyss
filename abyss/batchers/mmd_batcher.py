@@ -1,6 +1,7 @@
 import math
 from queue import Queue
 from typing import Dict, List
+
 from abyss.batchers.batcher import Batcher
 from abyss.orchestrator.worker import Worker
 
@@ -76,7 +77,7 @@ class MMDBatcher(Batcher):
 
         self._batch()
 
-    def _batch(self):
+    def _batch(self) -> None:
         """Iterates through each job and adds job to worker that will
         have the lowest mean job batch size once the job is added.
 

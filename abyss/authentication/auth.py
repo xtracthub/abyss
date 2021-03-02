@@ -1,5 +1,5 @@
-from globus_sdk import ConfidentialAppAuthClient
 from flask import abort, request, current_app as app
+from globus_sdk import ConfidentialAppAuthClient
 
 
 def authenticate(r: request) -> [str, abort]:

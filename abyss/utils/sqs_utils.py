@@ -1,6 +1,7 @@
 import json
-import boto3
 from typing import Dict, List
+
+import boto3
 
 
 def create_sqs_connection(aws_access: str, aws_secret: str,

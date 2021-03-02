@@ -1,7 +1,7 @@
 from abyss.batchers.batcher import Batcher
-from abyss.batchers.round_robin_batcher import RoundRobinBatcher
 from abyss.batchers.knapsack_batcher import KnapsackBatcher
 from abyss.batchers.mmd_batcher import MMDBatcher
+from abyss.batchers.round_robin_batcher import RoundRobinBatcher
 
 BATCHER_NAME_MAPPING = {
     "round_robin": RoundRobinBatcher,
@@ -11,17 +11,17 @@ BATCHER_NAME_MAPPING = {
 
 
 def get_batcher(batcher_name: str) -> Batcher:
-    """Returns a groupers by name
+    """Returns a batcher by name.
 
     Parameters
     ----------
     batcher_name : str
-        Name of groupers to return
+        Name of batcher to return.
 
     Returns
     -------
-    Grouper
-        File groupers.
+    Batcher
+        File batcher.
     """
     try:
         return BATCHER_NAME_MAPPING[batcher_name]

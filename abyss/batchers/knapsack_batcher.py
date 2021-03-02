@@ -1,6 +1,8 @@
-import numpy as np
 import math
 from typing import Dict, List
+
+import numpy as np
+
 from abyss.batchers.batcher import Batcher
 from abyss.orchestrator.worker import Worker
 

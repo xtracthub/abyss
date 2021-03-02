@@ -1,4 +1,5 @@
 from flask import Flask
+
 from abyss.config import Config
 from abyss.routes.orchestrate import orchestrate_api
 from abyss.utils.psql_utils import ABYSS_TABLES, read_flask_db_config, \

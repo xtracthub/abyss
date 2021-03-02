@@ -75,6 +75,7 @@ the usage of **Groupers**, which can generate more physical file metadata. Suppo
 The Globus crawler crawls directories via a Globus endpoint.
 
 # TODOs:
+- Clean up imports
 
 ## Orchestrator
 - Add logic to handle crawler metadata

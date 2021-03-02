@@ -3,16 +3,17 @@ import threading
 import time
 import uuid
 from queue import Queue
+
 import globus_sdk
+
 from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
-from abyss.utils.sqs_utils import put_messages, make_queue
 
 
 class GlobusCrawler(Crawler):
     def __init__(self, transfer_token: str,
                  globus_eid: str, base_path: str, grouper_name: str,
-                 conn, sqs_conn, max_crawl_threads=2):
+                 max_crawl_threads=2):
         """Crawls and groups files within a Globus directory, then pushes
         results to an SQS queue. Crawler status is recorded in a PostgreSQL
         database.
@@ -27,21 +28,13 @@ class GlobusCrawler(Crawler):
             Location in endpoint to begin crawling.
         grouper_name : str
             Name of groupers to use.
-        conn
-            Connection object to PostgreSQL database.
-        sqs_conn
-            AWS SQS boto3 object.
         max_crawl_threads : int
             Max number of threads to use to crawl.
-        max_push_threads : str
-            Max number of threads to use to push results to SQS.
         """
         self.transfer_token = transfer_token
         self.globus_eid = globus_eid
         self.base_path = base_path
         self.max_crawl_threads = max_crawl_threads
-        self.db_conn = conn
-        self.sqs_conn = sqs_conn
 
         self.crawl_id = str(uuid.uuid4())
         self.crawl_results = {"root_path": base_path, "metadata": []}
@@ -51,19 +44,19 @@ class GlobusCrawler(Crawler):
 
         self._get_transfer_client()
 
-    def crawl(self):
+    def crawl(self) -> dict:
         """Method for starting local crawl.
 
         Returns
         -------
-        str
-            Crawl ID.
+        self.crawl_results: dict
+            Dictionary containing crawl metadata
         """
         self._start_crawl()
 
         return self.crawl_results
 
-    def _start_crawl(self):
+    def _start_crawl(self) -> None:
         """Internal blocking method for starting local crawl. Starts all
         threads and updates database with crawl status."""
         self.crawl_queue.put(self.base_path)
@@ -80,7 +73,7 @@ class GlobusCrawler(Crawler):
         for thread in crawl_threads:
             thread.join()
 
-    def _thread_crawl(self, thread_id):
+    def _thread_crawl(self, thread_id: str) -> None:
         """Crawling thread."""
         while True:
             while self.crawl_queue.empty():
@@ -118,7 +111,7 @@ class GlobusCrawler(Crawler):
                 self.crawl_results["metadata"].append({"path": path,
                                                        "metadata": dir_file_metadata[path]})
 
-    def _get_transfer_client(self):
+    def _get_transfer_client(self) -> None:
         """Sets self.tc to Globus transfer client using
         self.transfer_token as authorization.
 

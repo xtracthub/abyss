@@ -1,6 +1,6 @@
+from abyss.predictors.gzip_predictor import GZipPredictor
 from abyss.predictors.predictor import Predictor
 from abyss.predictors.tar_predictor import TarPredictor
-from abyss.predictors.gzip_predictor import GZipPredictor
 
 FILE_PREDICTOR_MAPPING = {
     ".tar": TarPredictor,
@@ -8,7 +8,19 @@ FILE_PREDICTOR_MAPPING = {
 }
 
 
-def get_predictor(file_path):
+def get_predictor(file_path: str) -> Predictor:
+    """Returns an appropriate predictor for a compressed file.
+
+    Parameters
+    ----------
+    file_path : str
+        File path to return predictor for.
+
+    Returns
+    -------
+    Predictor
+        File predictor.
+    """
     extension = Predictor.get_extension(file_path)
 
     try:

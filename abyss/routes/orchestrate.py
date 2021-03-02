@@ -1,10 +1,10 @@
 import uuid
+
 from flask import Blueprint, request, current_app as app
+
 from abyss.authentication.auth import authenticate
-from abyss.orchestrator.abyss_orchestrator import AbyssOrchestrator
 from abyss.utils.psql_utils import read_flask_db_config, \
     create_connection, create_table_entry, select_by_column
-
 
 orchestrate_api = Blueprint("orchestrate", __name__)
 

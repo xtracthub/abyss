@@ -7,6 +7,7 @@ from typing import Optional
 
 class Predictor(ABC):
     def __init__(self):
+        """Predictor for decompressed file size."""
         self.model = None
 
     @staticmethod
@@ -53,6 +54,10 @@ class Predictor(ABC):
             Path to data to train on.
         save_path : str
             Path to save model.
+
+        Returns
+        ----------
+        None
         """
         raise NotImplementedError
 
@@ -64,23 +69,27 @@ class Predictor(ABC):
         ----------
         load_path : str
             Path to predictor model to load.
+
+        Returns
+        ----------
+        None
         """
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, file_path: str, file_size: float) -> float:
+    def predict(self, file_path: str, file_size: int) -> int:
         """Predicts the size of decompressed data.
 
         Parameters
         ----------
         file_path : str
             Path of compressed file to predict on.
-        file_size : float
+        file_size : int
             Size of compressed file to predict on.
 
         Returns
         -------
-        float
+        int
             Prediction of decompressed file size.
         """
         raise NotImplementedError

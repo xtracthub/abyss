@@ -1,20 +1,22 @@
-import os
-import numpy as np
-import math
 import logging
-import pandas as pd
+import math
+import os
 import pickle as pkl
 from typing import Optional
+
+import numpy as np
+import pandas as pd
 from sklearn.linear_model import LinearRegression
+
 from abyss.definitions import ROOT_DIR
 from abyss.predictors.predictor import Predictor
-
 
 logger = logging.getLogger(__name__)
 
 
 class GZipPredictor(Predictor):
     def __init__(self):
+        """Predictor for .gz files."""
         super().__init__()
 
     @staticmethod
@@ -58,7 +60,8 @@ class GZipPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path: Optional[str] = os.path.join(ROOT_DIR, "predictors/gzip_model.pkl")) -> None:
+    def load_model(self, load_path: Optional[str] = os.path.join(ROOT_DIR,
+                                                                 "predictors/gzip_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters
@@ -71,7 +74,7 @@ class GZipPredictor(Predictor):
 
         logger.info(f"LOADED {load_path} as model")
 
-    def predict(self, file_path: str, file_size: float) -> float:
+    def predict(self, file_path: str, file_size: float) -> int:
         """Predicts the size of decompressed .gz file.
 
         Parameters

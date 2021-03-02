@@ -8,6 +8,7 @@ from abyss.crawlers.groupers import get_grouper
 from abyss.utils.sqs_utils import put_messages, make_queue
 
 
+@DeprecationWarning
 class LocalCrawler(Crawler):
     def __init__(self, abyss_id: str, base_path: str, grouper_name: str,
                  conn, sqs_conn, max_crawl_threads=2, max_push_threads=4):
