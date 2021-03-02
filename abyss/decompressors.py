@@ -62,7 +62,7 @@ def is_compressed(file_path: str) -> bool:
     bool
         Whether file_path is a compressed file.
     """
-    compressed_extensions = [".gz", ".tar", ".tar.gz", ".zip"]
+    compressed_extensions = [".gz", ".tar", ".zip"]
 
     for extension in compressed_extensions:
         if file_path.endswith(extension):
@@ -115,8 +115,4 @@ def decompress(file_path: str, extract_dir: str) -> str:
 
 
 if __name__ == "__main__":
-    from funcx import FuncXClient
-
-    fxc = FuncXClient()
-    id = fxc.register_function(decompress)
-    print(id)
+    print(is_compressed("tar"))
