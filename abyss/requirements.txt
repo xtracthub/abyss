@@ -11,3 +11,4 @@ networkx
 xtract_sdk
 psycopg2
 funcx
+funcx_endpoint
