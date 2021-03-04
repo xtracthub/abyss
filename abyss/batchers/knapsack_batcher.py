@@ -52,7 +52,7 @@ class KnapsackBatcher(Batcher):
         if "capacity_buffer" in kwargs:
             self.capacity_buffer = kwargs["capacity_buffer"]
         else:
-            self.capacity_buffer = 10 ** 7
+            self.capacity_buffer = 10 ** 8
 
         self._batch()
 
@@ -107,11 +107,11 @@ class KnapsackBatcher(Batcher):
         for worker in self.workers:
             jobs = self._get_knapsack_items(worker)
 
-            assert sum([job.decompressed_size for job in jobs]) <= worker.available_space
+            assert sum([job.decompressed_size for job in jobs]) <= worker.curr_available_space
 
             for job in jobs:
                 decompressed_size = job.decompressed_size
-                worker.available_space -= decompressed_size
+                worker.curr_available_space -= decompressed_size
 
                 self.worker_batches[worker.worker_id].append(job)
                 self.jobs.remove(job)
@@ -130,6 +130,9 @@ class KnapsackBatcher(Batcher):
         jobs : list(Job)
             Job batch for worker.
         """
+        if not self.jobs:
+            return []
+
         available_space = math.ceil(worker.curr_available_space / self.capacity_buffer)
         knapsack_array = np.empty((len(self.jobs) + 1,
                                    available_space + 1))
@@ -147,7 +150,7 @@ class KnapsackBatcher(Batcher):
                     knapsack_array[i][j] = knapsack_array[i - 1][j]
 
         res = knapsack_array[len(self.jobs)][available_space]
-        jobs = []
+        jobs = [job for job in self.jobs if job.decompressed_size == 0]
 
         for i in range(len(self.jobs), 0, -1):
             if res <= 0:
@@ -161,4 +164,3 @@ class KnapsackBatcher(Batcher):
                 available_space -= math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
 
         return jobs
-

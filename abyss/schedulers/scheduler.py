@@ -1,13 +1,14 @@
 from typing import Dict, List
 
 from abyss.batchers import get_batcher
-from abyss.dispatcher import get_dispatcher
+from abyss.dispatchers import get_dispatcher
+from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
 
 
 class Scheduler:
     def __init__(self, batcher_name: str, dispatcher_name: str,
-                 workers: List[Worker], jobs: List[Dict]):
+                 workers: List[Worker], jobs: List[Job]):
         """Class for internally managing both the Batcher and
         Dispatcher. Takes jobs and places them into queues for workers
         to process.
@@ -26,12 +27,14 @@ class Scheduler:
         """
         self._worker_dict = dict()
         self._batcher = get_batcher(batcher_name)(workers, jobs)
-        self._dispatcher = get_dispatcher(dispatcher_name)(workers, self._batcher.worker_batches)
+        self._dispatcher = get_dispatcher(dispatcher_name)(workers)
 
         self.worker_queues = self._dispatcher.worker_queues
 
         for worker in workers:
             self._worker_dict[worker.worker_id] = worker
+
+        self._schedule()
 
     def update_worker(self, worker: Worker) -> None:
         """Updates a worker. If the current available size of a worker
@@ -49,13 +52,13 @@ class Scheduler:
         self._batcher.update_worker(worker)
         self._schedule()
 
-    def schedule_job(self, job: Dict) -> None:
+    def schedule_job(self, job: Job) -> None:
         """Places job in queue to be scheduled.
 
         Parameters
         ----------
-        job : dict
-            Dictionary with file path and size of decompressed file.
+        job : Job
+            Job object.
 
         Returns
         -------
@@ -64,14 +67,13 @@ class Scheduler:
         self._batcher.batch_job(job)
         self._schedule()
 
-    def schedule_jobs(self, jobs: List[Dict]) -> None:
+    def schedule_jobs(self, jobs: List[Job]) -> None:
         """Places batch of jobs in queue to be batched.
 
         Parameters
         ----------
-        jobs : list(dict)
-            List of dictionaries with file path and size of decompressed
-            file.
+        jobs : list(Job)
+            List of Jobs.
 
         Returns
         -------
@@ -90,6 +92,4 @@ class Scheduler:
         """
         self._dispatcher.dispatch_batch(self._batcher.worker_batches)
         self._worker_queues = self._dispatcher.worker_queues
-
-
 

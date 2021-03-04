@@ -1,6 +1,6 @@
 import math
 from queue import Queue
-from typing import Dict, List
+from typing import List
 
 from abyss.batchers.batcher import Batcher
 from abyss.orchestrator.job import Job
@@ -30,6 +30,8 @@ class MMDBatcher(Batcher):
 
         for job in self.jobs:
             self.job_queue.put(job)
+
+        self.jobs = []
 
         self._batch()
 
@@ -104,14 +106,8 @@ class MMDBatcher(Batcher):
                     worker = self.worker_dict[worker_id]
                     self.worker_batches[worker_id].append(job)
 
-                    worker.available_space -= decompressed_size
+                    worker.curr_available_space -= decompressed_size
                     worker_info_tuple[1] += decompressed_size
                     break
                 elif idx == len(self.workers) - 1:
                     self.job_queue.put(job)
-
-
-
-
-
-

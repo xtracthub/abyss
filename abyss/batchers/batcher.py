@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import List
 
 from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
@@ -69,7 +69,9 @@ class Batcher(ABC):
 
     @abstractmethod
     def _batch(self):
-        """Internal method for batching jobs."""
+        """Internal method for batching jobs. Implemented methods should
+        be destructive (removing jobs from self.jobs) to prevent
+        accidental reprocessing of batched jobs."""
         raise NotImplementedError
 
     def _is_failed_job(self, job: Job) -> bool:
@@ -105,8 +107,8 @@ class Batcher(ABC):
         -------
         None
         """
-        try:
+        if worker.worker_id in self.worker_dict:
             self.worker_dict[worker.worker_id] = worker
             self._batch()
-        except KeyError:
+        else:
             raise ValueError(f"Worker {worker.worker_id} does not already exist")

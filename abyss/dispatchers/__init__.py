@@ -1,5 +1,5 @@
-from abyss.dispatcher.fifo_dispatcher import FIFODispatcher
-from abyss.dispatcher.dispatcher import Dispatcher
+from abyss.dispatchers.fifo_dispatcher import FIFODispatcher
+from abyss.dispatchers.dispatcher import Dispatcher
 
 DISPATCHER_NAME_MAPPING = {
     "fifo": FIFODispatcher,
@@ -7,12 +7,12 @@ DISPATCHER_NAME_MAPPING = {
 
 
 def get_dispatcher(dispatcher_name: str) -> Dispatcher:
-    """Returns a dispatcher by name.
+    """Returns a dispatchers by name.
 
     Parameters
     ----------
     dispatcher_name : str
-        Name of dispatcher to return.
+        Name of dispatchers to return.
 
     Returns
     -------
@@ -22,4 +22,4 @@ def get_dispatcher(dispatcher_name: str) -> Dispatcher:
     try:
         return DISPATCHER_NAME_MAPPING[dispatcher_name]
     except KeyError:
-        raise ValueError(f"{dispatcher_name} dispatcher does not exist")
+        raise ValueError(f"{dispatcher_name} dispatchers does not exist")

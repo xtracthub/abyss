@@ -1,6 +1,6 @@
 from typing import List
 
-from abyss.dispatcher.dispatcher import Dispatcher
+from abyss.dispatchers.dispatcher import Dispatcher
 from abyss.orchestrator.worker import Worker
 
 
@@ -36,6 +36,7 @@ class FIFODispatcher(Dispatcher):
                 raise ValueError(f"Can not insert {worker_id} into worker_batches")
 
             self.worker_batches[worker_id] = worker_batches[worker_id]
+            worker_batches[worker_id] = []
 
         self._dispatch()
 
@@ -47,7 +48,7 @@ class FIFODispatcher(Dispatcher):
         -------
         None
         """
-        for worker_id, worker_batch in self.worker_batches.itmes():
+        for worker_id, worker_batch in self.worker_batches.items():
             worker_queue = self.worker_queues[worker_id]
 
             for job in worker_batch:

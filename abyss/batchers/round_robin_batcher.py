@@ -26,6 +26,7 @@ class RoundRobinBatcher(Batcher):
         for job in self.jobs:
             self.job_queue.put(job)
 
+        self.jobs = []
         self._batch()
 
     def batch_job(self, job: Job) -> None:

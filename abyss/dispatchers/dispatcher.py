@@ -21,6 +21,7 @@ class Dispatcher(ABC):
 
         for worker in workers:
             self.worker_queues[worker.worker_id] = []
+            self.worker_batches[worker.worker_id] = []
 
     @abstractmethod
     def dispatch_batch(self, worker_batches: dict) -> None:

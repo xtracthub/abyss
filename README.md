@@ -84,9 +84,9 @@ The Globus crawler crawls directories via a Globus endpoint.
         - It could be costly to re-transfer files if we've already decompressed a file on a worker
         - Decompressing additional data could result in OOM errors
         - Most likely will need to add additional logic in orchestrator to reprocess data.
-            - I think the easiest way to add the logic is to create a `Job` class that holds information like the 
+            - ~~I think the easiest way to add the logic is to create a `Job` class that holds information like the 
             status, paths to crawl, etc. That way, when reprocessing files, we can just modify the `Job` instance to deal 
-            with recursively compressed data.
+            with recursively compressed data.~~
 ## Predictors
 - Create `.zip` predictor
 - Switch to `Keras` models instead of `sklearn` models
@@ -101,7 +101,8 @@ The Globus crawler crawls directories via a Globus endpoint.
     alternates between large and small jobs)
     - Determine the effect of using these dispatchers over a LIFO dispatcher. Might not have a super large benefit since 
     funcX internally handles scheduling for nodes on workers
-- Write a ton of tests
+- ~~Delete jobs from batcher once they've been scheduled into batches~~
+- ~~Write a ton of tests~~
 ## Prefetcher
 - Handle failed transfers
 ## Crawlers   
