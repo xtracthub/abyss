@@ -6,8 +6,6 @@ import pickle as pkl
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import PolynomialFeatures
 
 from abyss.definitions import ROOT_DIR
 from abyss.predictors import Predictor
@@ -15,9 +13,9 @@ from abyss.predictors import Predictor
 logger = logging.getLogger(__name__)
 
 
-class TarPredictor(Predictor):
+class ZipPredictor(Predictor):
     def __init__(self):
-        """Predictor for .tar files."""
+        """Predictor for .zip files."""
         super().__init__()
 
     @staticmethod
@@ -34,11 +32,11 @@ class TarPredictor(Predictor):
         bool
             Whether file_path is compatible with tar predictor.
         """
-        return Predictor.get_extension(file_path) == ".tar"
+        return Predictor.get_extension(file_path) == ".zip"
 
     @staticmethod
-    def train_model(data_path=os.path.join(ROOT_DIR, "../data/tar_decompression_results.csv"),
-                    save_path=os.path.join(ROOT_DIR, "predictors/models/tar_model.pkl")) -> None:
+    def train_model(data_path=os.path.join(ROOT_DIR, "../data/zip_decompression_results.csv"),
+                    save_path=os.path.join(ROOT_DIR, "predictors/models/zip_model.pkl")) -> None:
         """Trains and saves a predictor model.
 
         Parameters
@@ -53,17 +51,15 @@ class TarPredictor(Predictor):
         x = np.array(data_df.compressed_size)
         y = np.array(data_df.decompressed_size)
 
-        degree = 3
         X = x.reshape(-1, 1)
 
-        model = make_pipeline(PolynomialFeatures(degree),
-                              LinearRegression(fit_intercept=False))
+        model = LinearRegression(fit_intercept=False)
         model.fit(X, y)
 
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/models/tar_model.pkl")) -> None:
+    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/zip_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters
@@ -77,7 +73,7 @@ class TarPredictor(Predictor):
         logger.info(f"LOADED {load_path} as model")
 
     def predict(self, file_path: str, file_size: int) -> int:
-        """Predicts the size of decompressed .tar file.
+        """Predicts the size of decompressed .zip file.
 
         Parameters
         ----------
@@ -89,7 +85,7 @@ class TarPredictor(Predictor):
         Returns
         -------
         int
-            Prediction of decompressed .tar file size.
+            Prediction of decompressed .zip file size.
         """
         if not self.model:
             raise ValueError("Model must be loaded before running predictions.")
@@ -104,4 +100,4 @@ class TarPredictor(Predictor):
 
 
 if __name__ == "__main__":
-    TarPredictor.train_model()
+    ZipPredictor.train_model()

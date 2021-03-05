@@ -2,7 +2,6 @@ import logging
 import math
 import os
 import pickle as pkl
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -36,8 +35,8 @@ class GZipPredictor(Predictor):
         return Predictor.get_extension(file_path) == ".gz"
 
     @staticmethod
-    def train_model(data_path: Optional[str] = "../../data/gzip_decompression_results.csv",
-                    save_path: Optional[str] = "gzip_model.pkl") -> None:
+    def train_model(data_path=os.path.join(ROOT_DIR, "../data/gzip_decompression_results.csv"),
+                    save_path=os.path.join(ROOT_DIR, "predictors/models/gzip_model.pkl")) -> None:
         """Trains and saves a predictor model.
 
         Parameters
@@ -54,14 +53,13 @@ class GZipPredictor(Predictor):
 
         X = x.reshape(-1, 1)
 
-        model = LinearRegression()
+        model = LinearRegression(fit_intercept=False)
         model.fit(X, y)
 
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path: Optional[str] = os.path.join(ROOT_DIR,
-                                                                 "predictors/gzip_model.pkl")) -> None:
+    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/models/gzip_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters
@@ -102,4 +100,4 @@ class GZipPredictor(Predictor):
 
 
 if __name__ == "__main__":
-    pass
+    GZipPredictor.train_model()
