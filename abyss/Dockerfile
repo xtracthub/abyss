@@ -2,9 +2,9 @@ FROM python:3.7
 
 RUN apt-get update
 
-RUN git clone https://github.com/xtracthub/abyss /abyss
+COPY . /abyss
 
-WORKDIR /abyss/abyss
+WORKDIR /abyss
 
 RUN pip3 install -r requirements.txt
 

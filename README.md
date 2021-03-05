@@ -87,6 +87,9 @@ The Globus crawler crawls directories via a Globus endpoint.
             - ~~I think the easiest way to add the logic is to create a `Job` class that holds information like the 
             status, paths to crawl, etc. That way, when reprocessing files, we can just modify the `Job` instance to deal 
             with recursively compressed data.~~
+- Add methods to push status updates to postgresql
+    - Add `get_status` path to flask
+- Create sdk
 ## Predictors
 - Create `.zip` predictor
 - Switch to `Keras` models instead of `sklearn` models
@@ -105,6 +108,8 @@ The Globus crawler crawls directories via a Globus endpoint.
 - ~~Write a ton of tests~~
 ## Prefetcher
 - Handle failed transfers
+    - Investigate the difference between "fatal" and "non-fatal" error.
+    - How does Globus clean up failed transfers?
 ## Crawlers   
 - ~~Improve file throughput of crawler~~
     - ~~Pushing to SQS takes an awfully long time, perhaps just spinning up more threads will solve the issue.~~
