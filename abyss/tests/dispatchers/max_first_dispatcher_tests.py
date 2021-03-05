@@ -1,11 +1,11 @@
 import unittest
 
-from abyss.dispatchers.fifo_dispatcher import FIFODispatcher
+from abyss.dispatchers.max_first_dispatcher import MaxFirstDispatcher
 from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
 
 
-class FIFODispatcherTests(unittest.TestCase):
+class MaxFirstDispatcherTests(unittest.TestCase):
     def test_dispatch(self):
         workers = [Worker.from_dict({
             "globus_eid": "0",
@@ -37,9 +37,14 @@ class FIFODispatcherTests(unittest.TestCase):
             workers[1].worker_id: worker_batches[workers[1].worker_id]
         }
 
-        dispatcher = FIFODispatcher(workers)
+        dispatcher = MaxFirstDispatcher(workers)
         dispatcher.dispatch_batch(worker_batches)
         worker_queues = dispatcher.worker_queues
+
+        for worker_id, worker_batch in preserved_batches.items():
+            preserved_batches[worker_id] = sorted(worker_batch,
+                                                  reverse=True,
+                                                  key=(lambda x: x.decompressed_size))
 
         for worker_id, worker_queue in worker_queues.items():
             self.assertEqual(list(worker_queue.queue), preserved_batches[worker_id])

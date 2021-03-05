@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from queue import Queue
 from typing import List
 
 from abyss.orchestrator.worker import Worker
@@ -20,7 +21,7 @@ class Dispatcher(ABC):
         self.worker_queues = dict()
 
         for worker in workers:
-            self.worker_queues[worker.worker_id] = []
+            self.worker_queues[worker.worker_id] = Queue()
             self.worker_batches[worker.worker_id] = []
 
     @abstractmethod

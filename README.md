@@ -91,7 +91,7 @@ The Globus crawler crawls directories via a Globus endpoint.
     - Add `get_status` path to flask
 - Create sdk
 ## Predictors
-- Create `.zip` predictor
+- ~~Create `.zip` predictor~~
 - Switch to `Keras` models instead of `sklearn` models
     - `Keras` models provide the opportunity to use custom loss functions
     - Determine optimum loss function to balance space vs time tradeoff (models that overpredict incur losses in space 
@@ -100,8 +100,8 @@ The Globus crawler crawls directories via a Globus endpoint.
 - ~~Create `Scheduler` class, which internally manages both a `Batcher` and `Dispatcher`~~
 - ~~Add internal method to `Batcher` to update the amount of available space on a worker~~
 - Create new dispatching strategies
-    - Potential dispatchers include a max first dispatcher, a min first dispatcher, and a max-min dispatcher (which 
-    alternates between large and small jobs)
+    - ~~Potential dispatchers include a max first dispatcher, a min first dispatcher, and a max-min dispatcher (which 
+    alternates between large and small jobs)~~
     - Determine the effect of using these dispatchers over a LIFO dispatcher. Might not have a super large benefit since 
     funcX internally handles scheduling for nodes on workers
 - ~~Delete jobs from batcher once they've been scheduled into batches~~

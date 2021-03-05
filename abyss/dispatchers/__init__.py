@@ -1,8 +1,14 @@
-from abyss.dispatchers.fifo_dispatcher import FIFODispatcher
 from abyss.dispatchers.dispatcher import Dispatcher
+from abyss.dispatchers.fifo_dispatcher import FIFODispatcher
+from abyss.dispatchers.max_first_dispatcher import MaxFirstDispatcher
+from abyss.dispatchers.max_min_dispatcher import MaxMinDispatcher
+from abyss.dispatchers.min_first_dispatcher import MinFirstDispatcher
 
 DISPATCHER_NAME_MAPPING = {
     "fifo": FIFODispatcher,
+    "max-first": MaxFirstDispatcher,
+    "max-min": MaxMinDispatcher,
+    "min-first": MinFirstDispatcher
 }
 
 

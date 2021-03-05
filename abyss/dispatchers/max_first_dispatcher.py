@@ -4,9 +4,9 @@ from abyss.dispatchers.dispatcher import Dispatcher
 from abyss.orchestrator.worker import Worker
 
 
-class FIFODispatcher(Dispatcher):
+class MaxFirstDispatcher(Dispatcher):
     def __init__(self, workers: List[Worker]):
-        """Dispatches worker_batches into queues using FIFO ordering.
+        """Dispatches worker_batches into queues max first.
 
         Parameters
         ----------
@@ -16,8 +16,8 @@ class FIFODispatcher(Dispatcher):
         super().__init__(workers)
 
     def dispatch_batch(self, worker_batches: dict) -> None:
-        """Places worker_batches into queues for each worker in FIFO
-        ordering.
+        """Places worker_batches into queues for each worker in max
+        first ordering.
 
         Parameters
         ----------
@@ -35,14 +35,14 @@ class FIFODispatcher(Dispatcher):
             if worker_id not in self.worker_batches:
                 raise ValueError(f"Can not insert {worker_id} into worker_batches")
 
-            self.worker_batches[worker_id].extend(worker_batch)
+            self.worker_batches[worker_id] = worker_batches[worker_id]
             worker_batches[worker_id] = []
 
         self._dispatch()
 
     def _dispatch(self) -> None:
-        """Places items from worker batch into worker queue based on
-        order of worker batch.
+        """Places items from worker batch into worker queue in max first
+        ordering.
 
         Returns
         -------
@@ -50,6 +50,8 @@ class FIFODispatcher(Dispatcher):
         """
         for worker_id, worker_batch in self.worker_batches.items():
             worker_queue = self.worker_queues[worker_id]
+            worker_batch.sort(reverse=True,
+                              key=(lambda x: x.decompressed_size))
 
             for job in worker_batch:
                 worker_queue.put(job)

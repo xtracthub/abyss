@@ -36,7 +36,7 @@ class SchedulerTests(unittest.TestCase):
                 # Making sure only the correct job gets scheduled
                 self.assertTrue(len(worker_queues), 1)
 
-                worker_queue_0 = worker_queues[workers[0].worker_id]
+                worker_queue_0 = list(worker_queues[workers[0].worker_id].queue)
                 self.assertEqual(len(worker_queue_0), 1)
                 self.assertEqual(worker_queue_0[0].decompressed_size,
                                  10)
@@ -50,7 +50,7 @@ class SchedulerTests(unittest.TestCase):
 
                 self.assertEqual(len(new_worker_queues), 1)
 
-                new_worker_queue_0 = new_worker_queues[workers[0].worker_id]
+                new_worker_queue_0 = list(new_worker_queues[workers[0].worker_id].queue)
                 self.assertEqual(len(new_worker_queue_0), 1)
                 self.assertEqual(new_worker_queue_0[0].decompressed_size,
                                  10)
@@ -64,7 +64,7 @@ class SchedulerTests(unittest.TestCase):
 
                 self.assertEqual(len(new_worker_queues_1), 1)
 
-                new_worker_queue_1 = new_worker_queues[workers[0].worker_id]
+                new_worker_queue_1 = list(new_worker_queues[workers[0].worker_id].queue)
                 self.assertEqual(len(new_worker_queue_1), 2)
                 self.assertEqual(new_worker_queue_1[0].decompressed_size,
                                  10)
