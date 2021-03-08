@@ -6,8 +6,6 @@ import pickle as pkl
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import PolynomialFeatures
 
 from abyss.definitions import ROOT_DIR
 from abyss.predictors import Predictor
@@ -39,7 +37,8 @@ class TarPredictor(Predictor):
     @staticmethod
     def train_model(data_path=os.path.join(ROOT_DIR, "../data/tar_decompression_results.csv"),
                     save_path=os.path.join(ROOT_DIR, "predictors/models/tar_model.pkl")) -> None:
-        """Trains and saves a predictor model.
+        """Trains and saves a linear regression model. Additionally adds
+        95th percentile error for error correction.
 
         Parameters
         ----------
@@ -53,12 +52,15 @@ class TarPredictor(Predictor):
         x = np.array(data_df.compressed_size)
         y = np.array(data_df.decompressed_size)
 
-        degree = 3
         X = x.reshape(-1, 1)
 
-        model = make_pipeline(PolynomialFeatures(degree),
-                              LinearRegression(fit_intercept=False))
+        model = LinearRegression(fit_intercept=False)
         model.fit(X, y)
+
+        error = model.predict(X) - y
+        percentile_error = np.quantile(error, 0.95)
+
+        model.intercept_ = percentile_error
 
         with open(save_path, "wb") as f:
             pkl.dump(model, f)

@@ -37,7 +37,8 @@ class GZipPredictor(Predictor):
     @staticmethod
     def train_model(data_path=os.path.join(ROOT_DIR, "../data/gzip_decompression_results.csv"),
                     save_path=os.path.join(ROOT_DIR, "predictors/models/gzip_model.pkl")) -> None:
-        """Trains and saves a predictor model.
+        """Trains and saves a linear regression model. Additionally adds
+        95th percentile error for error correction.
 
         Parameters
         ----------
@@ -55,6 +56,11 @@ class GZipPredictor(Predictor):
 
         model = LinearRegression(fit_intercept=False)
         model.fit(X, y)
+
+        error = model.predict(X) - y
+        percentile_error = np.quantile(error, 0.95)
+
+        model.intercept_ = percentile_error
 
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
