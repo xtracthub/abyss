@@ -2,6 +2,29 @@ import json
 from typing import Dict, List
 
 import boto3
+from flask import Flask
+
+
+def read_flask_sqs_config(app: Flask) -> dict:
+    """Reads PostgreSQL credentials from a Flask app configuration.
+
+    Parameters
+    ----------
+    app : Flask
+        Flask app to read database configuration from.
+
+    Returns
+    -------
+    credentials : dict
+        Dictionary with credentials.
+    """
+    credentials = dict()
+
+    credentials["aws_access"] = app.config.get("AWS_ACCESS")
+    credentials["aws_secret"] = app.config.get("AWS_SECRET")
+    credentials["aws_region"] = app.config.get("AWS_REGION")
+
+    return credentials
 
 
 def create_sqs_connection(aws_access: str, aws_secret: str,

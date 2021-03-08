@@ -10,20 +10,24 @@ from flask import Flask
 ABYSS_STATUS = {
     "abyss_id": "TEXT PRIMARY KEY",
     "client_id": "TEXT",
-    "crawl_status": "TEXT"
+    "crawl_status": "TEXT",
+    "unpredicted": "INT",
+    "predicted": "INT",
+    "scheduled": "INT",
+    "prefetching": "INT",
+    "prefetched": "INT",
+    "decompressing": "INT",
+    "decompressed": "INT",
+    "crawling": "INT",
+    "succeeded": "INT",
+    "FAILED": "INT"
 }
 
-CRAWL_STATUS_TABLE = {
-    "crawl_id": "TEXT PRIMARY KEY",
-    "crawl_status": "TEXT"
-}
-
-ABYSS_TABLES = {"crawl_status": CRAWL_STATUS_TABLE,
-                "abyss_status": ABYSS_STATUS}
+ABYSS_TABLES = {"abyss_status": ABYSS_STATUS}
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
 
 
-def read_flask_db_config(app: Flask) -> Dict:
+def read_flask_db_config(app: Flask) -> dict:
     """Reads PostgreSQL credentials from a Flask app configuration.
 
     Parameters
@@ -48,7 +52,7 @@ def read_flask_db_config(app: Flask) -> Dict:
 
 def read_db_config_file(config_file=os.path.join(PROJECT_ROOT,
                                                  "database.ini"),
-                        section="postgresql") -> Dict:
+                        section="postgresql") -> dict:
     """Reads PostgreSQL credentials from a .ini file.
 
     Parameters
@@ -80,7 +84,7 @@ def read_db_config_file(config_file=os.path.join(PROJECT_ROOT,
     return credentials
 
 
-def create_connection(credentials: Dict):
+def create_connection(credentials: dict):
     """Creates a connection object to a PostgreSQL database.
 
     Parameters
@@ -121,7 +125,7 @@ def table_exists(conn, table_name: str) -> bool:
     return bool(cur.rowcount)
 
 
-def build_tables(conn, tables: Dict[str, Dict]) -> None:
+def build_tables(conn, tables: Dict[str, dict]) -> None:
     """Creates tables within a database.
 
     Parameters
@@ -198,7 +202,7 @@ def create_table_entry(conn, table_name: str, **columns) -> None:
 
 
 def update_table_entry(conn, table_name: str,
-                       primary_key: Dict, **columns) -> None:
+                       primary_key: dict, **columns) -> None:
     """Updates values within an existing table.
 
     Parameters

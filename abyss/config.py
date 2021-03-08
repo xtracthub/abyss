@@ -10,3 +10,7 @@ class Config(object):
     DB_DATABASE = os.environ.get("DB_DATABASE")
     DB_USER = os.environ.get("DB_USER")
     DB_PASSWORD = os.environ.get("DB_PASSWORD")
+
+    AWS_SECRET = os.environ.get("AWS_SECRET")
+    AWS_ACCESS = os.environ.get("AWS_ACCESS")
+    AWS_REGION = os.environ.get("AWS_REGION")

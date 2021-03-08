@@ -75,7 +75,7 @@ the usage of **Groupers**, which can generate more physical file metadata. Suppo
 The Globus crawler crawls directories via a Globus endpoint.
 
 # TODOs:
-- Clean up imports
+- ~~Clean up imports~~
 
 ## Orchestrator
 - Add logic to handle crawler metadata
@@ -87,8 +87,8 @@ The Globus crawler crawls directories via a Globus endpoint.
             - ~~I think the easiest way to add the logic is to create a `Job` class that holds information like the 
             status, paths to crawl, etc. That way, when reprocessing files, we can just modify the `Job` instance to deal 
             with recursively compressed data.~~
-- Add methods to push status updates to postgresql
-    - Add `get_status` path to flask
+- ~~Add methods to push status updates to postgresql~~
+    - ~~Add `get_status` path to flask~~
 - Create sdk
 ## Predictors
 - ~~Create `.zip` predictor~~
