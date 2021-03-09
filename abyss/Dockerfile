@@ -8,6 +8,12 @@ WORKDIR /abyss
 
 RUN pip3 install -r requirements.txt
 
+RUN git clone --branch xtract-jetstream https://github.com/funcx-faas/funcX ~/funcX
+
+RUN pip3 install ~/funcX/funcx_endpoint/
+RUN pip3 install ~/funcX/funcx_sdk/
+
+
 ARG aws_secret=aws_secret
 ARG aws_access=aws_access
 ARG transfer_token=transfer_token
