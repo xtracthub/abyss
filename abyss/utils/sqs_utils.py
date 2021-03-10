@@ -1,8 +1,47 @@
 import json
+import os
+from configparser import ConfigParser
 from typing import Dict, List
 
 import boto3
 from flask import Flask
+
+
+PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
+
+
+def read_sqs_config_file(config_file=os.path.join(PROJECT_ROOT,
+                                                 "sqs.ini"),
+                        section="sqs") -> dict:
+    """Reads PostgreSQL credentials from a .ini file.
+
+    Parameters
+    ----------
+    config_file : str
+        .ini config file to read database configuration from.
+    section : str
+        Section in .ini file to read credentials from.
+
+    Returns
+    -------
+    credentials : dict
+        Dictionary with credentials.
+    """
+    parser = ConfigParser()
+    parser.read(config_file)
+
+    credentials = {}
+
+    if parser.has_section(section):
+        params = parser.items(section)
+        for param in params:
+            credentials[param[0]] = param[1]
+
+    else:
+        raise Exception(
+            f"Section {section} not found in the {config_file} file")
+
+    return credentials
 
 
 def read_flask_sqs_config(app: Flask) -> dict:

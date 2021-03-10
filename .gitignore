@@ -7,3 +7,4 @@ set_env.sh
 data/mdf_crawl/
 mdf_crawl.csv
 cdiac_crawl.csv
+scripts/
