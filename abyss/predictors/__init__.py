@@ -1,10 +1,12 @@
 from abyss.predictors.gzip_predictor import GZipPredictor
 from abyss.predictors.predictor import Predictor
+from abyss.predictors.zip_predictor import ZipPredictor
 from abyss.predictors.tar_predictor import TarPredictor
 
 FILE_PREDICTOR_MAPPING = {
     ".tar": TarPredictor,
-    ".gz": GZipPredictor
+    ".gz": GZipPredictor,
+    ".zip": ZipPredictor
 }
 
 

@@ -112,10 +112,12 @@ class GlobusCrawler(Crawler):
                     elif item["type"] == "dir":
                         self.crawl_queue.put(full_path)
             except globus_sdk.exc.TransferAPIError as e:
-                if e.code == 502:
+                if e.code == "ExternalError.DirListingFailed.NotDirectory":
                     for item in self.tc.operation_ls(self.globus_eid,
                                                      path=os.path.dirname(curr)):
-                        if item["name"] == curr:
+                        full_path = os.path.join(os.path.dirname(curr),
+                                                 item["name"])
+                        if full_path == curr:
                             extension = self.get_extension(curr)
                             file_size = item["size"]
 

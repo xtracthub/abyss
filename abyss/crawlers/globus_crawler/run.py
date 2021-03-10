@@ -16,7 +16,7 @@ if __name__ == "__main__":
     import time
     t0 = time.time()
     print(run_crawler("Ago2vz44pB9bm58XvwVVWvpv3QJxe3W35V9oN1oPgPyao5NwkoHgCybQd7NMemmEBgVxBn095J0grGCKqEop2f1605",
-              "/home/tskluzac/ryan/results/UmichIndoorCorridor2012.tar",
+              "/home/tskluzac/ryan/results/erie_expt2.nc",
               "3f487096-811c-11eb-a933-81bbe47059f4",
                                                           "",
               1))

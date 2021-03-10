@@ -65,7 +65,7 @@ class ZipPredictor(Predictor):
         with open(save_path, "wb") as f:
             pkl.dump(model, f)
 
-    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/zip_model.pkl")) -> None:
+    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/models/zip_model.pkl")) -> None:
         """Loads model to class.
 
         Parameters

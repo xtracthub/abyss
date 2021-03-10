@@ -79,7 +79,7 @@ class AbyssOrchestrator:
                                           self.globus_source_eid,
                                           globus_dest_eid,
                                           transfer_dir,
-                                          2)
+                                          4)
 
             self.prefetchers[worker.worker_id] = prefetcher
 
@@ -122,9 +122,9 @@ class AbyssOrchestrator:
         self._funcx_poll_thread = threading.Thread(
             target=self._thread_funcx_poll,
             daemon=True)
-        # self._consolidate_results_thread = threading.Thread(
-        #     target=self._thread_consolidate_crawl_results,
-        #     daemon=True)
+        self._consolidate_results_thread = threading.Thread(
+            target=self._thread_consolidate_crawl_results,
+            daemon=True)
         self._lock = threading.Lock()
 
         self.funcx_client = FuncXClient()
@@ -216,7 +216,7 @@ class AbyssOrchestrator:
         self._funcx_decompress_thread.start()
         self._funcx_crawl_thread.start()
         self._funcx_poll_thread.start()
-        # self._consolidate_results_thread.start()
+        self._consolidate_results_thread.start()
 
         while not self.kill_status:
             time.sleep(5)
@@ -230,7 +230,191 @@ class AbyssOrchestrator:
         self._funcx_decompress_thread.join()
         self._funcx_crawl_thread.join()
         self._funcx_poll_thread.join()
-        # self._consolidate_results_thread.join()
+        self._consolidate_results_thread.join()
+
+    # def _orchestrate(self):
+    #     unpredicted_set = self.job_statuses[JobStatus.UNPREDICTED]
+    #     predicted_set = self.job_statuses[JobStatus.PREDICTED]
+    #     scheduled_set = self.job_statuses[JobStatus.SCHEDULED]
+    #     prefetching_set = self.job_statuses[JobStatus.PREFETCHING]
+    #     prefetched_set = self.job_statuses[JobStatus.PREFETCHED]
+    #     failed_set = self.job_statuses[JobStatus.FAILED]
+    #     decompressing_set = self.job_statuses[JobStatus.DECOMPRESSING]
+    #     decompressed_set = self.job_statuses[JobStatus.DECOMPRESSED]
+    #     crawling_set = self.job_statuses[JobStatus.CRAWLING]
+    #     succeeded_set = self.job_statuses[JobStatus.SUCCEEDED]
+    #
+    #     while not self.kill_status:
+    #         while unpredicted_set:
+    #             job = unpredicted_set.pop()
+    #
+    #             file_path = job.file_path
+    #             compressed_size = job.compressed_size
+    #             file_extension = Predictor.get_extension(file_path)
+    #
+    #             predictor = self.predictors[file_extension]
+    #             decompressed_size = predictor.predict(file_path, compressed_size)
+    #
+    #             job.decompressed_size = decompressed_size
+    #             job.status = JobStatus.PREDICTED
+    #
+    #             predicted_set.add(job)
+    #
+    #         self.scheduler.schedule_jobs(list(predicted_set))
+    #
+    #         self.worker_queues = self.scheduler.worker_queues
+    #         predicted_set.clear()
+    #
+    #         for worker_id, worker_queue in self.worker_queues.items():
+    #             for _ in range(worker_queue.qsize()):
+    #                 job = worker_queue.get()
+    #                 job.status = JobStatus.SCHEDULED
+    #                 job.worker_id = worker_id
+    #                 scheduled_set.add(job)
+    #                 worker_queue.put(job)
+    #
+    #         for worker_id, worker_queue in self.worker_queues.items():
+    #             prefetcher = self.prefetchers[worker_id]
+    #
+    #             while not worker_queue.empty():
+    #                 job = worker_queue.get()
+    #
+    #                 file_path = job.file_path
+    #                 worker_id = job.worker_id
+    #
+    #                 prefetcher.transfer(file_path)
+    #
+    #                 job.status = JobStatus.PREFETCHING
+    #                 job.transfer_path = f"{self.worker_dict[worker_id].transfer_dir}/{file_path}"
+    #
+    #                 prefetching_set.add(job)
+    #                 scheduled_set.remove(job)
+    #
+    #         prefetched_jobs = []
+    #         for job in prefetching_set:
+    #             file_path = job.file_path
+    #             worker_id = job.worker_id
+    #             prefetcher = self.prefetchers[worker_id]
+    #
+    #             prefetcher_status = prefetcher.get_transfer_status(
+    #                 file_path)
+    #
+    #             if prefetcher_status == PrefetcherStatuses.SUCCEEDED:
+    #                 job.status = JobStatus.PREFETCHED
+    #                 prefetched_set.add(job)
+    #                 prefetched_jobs.append(job)
+    #             elif prefetcher_status == PrefetcherStatuses.FAILED:
+    #                 print(f"{job.file_path} failed to prefetch")
+    #                 job.status = JobStatus.FAILED
+    #                 # Potentially add more logic here or in prefetcher to restart failed transfer
+    #                 failed_set.add(job)
+    #                 prefetched_jobs.append(job)
+    #
+    #         for job in prefetched_jobs:
+    #             prefetching_set.remove(job)
+    #
+    #         for job in prefetched_set:
+    #             file_path = job.transfer_path
+    #             worker_id = job.worker_id
+    #
+    #             worker = self.worker_dict[worker_id]
+    #             funcx_task_id = self.funcx_client.run(file_path,
+    #                                                   worker.decompress_dir,
+    #                                                   endpoint_id=worker.funcx_eid,
+    #                                                   function_id=DECOMPRESSOR_FUNCX_UUID)
+    #
+    #             job.funcx_decompress_id = funcx_task_id
+    #             job.status = JobStatus.DECOMPRESSING
+    #             decompressing_set.add(job)
+    #
+    #             time.sleep(1)
+    #
+    #         prefetched_set.clear()
+    #
+    #         for job in decompressed_set:
+    #             worker_id = job.worker_id
+    #
+    #             worker = self.worker_dict[worker_id]
+    #             funcx_task_id = self.funcx_client.run(
+    #                 self.transfer_token,
+    #                 job.decompress_path,
+    #                 worker.globus_eid,
+    #                 "",
+    #                 endpoint_id=worker.funcx_eid,
+    #                 function_id=GLOBUS_CRAWLER_FUNCX_UUID)
+    #             job.funcx_crawl_id = funcx_task_id
+    #             job.status = JobStatus.CRAWLING
+    #             crawling_set.add(job)
+    #
+    #             time.sleep(1)
+    #
+    #         decompressed_set.clear()
+    #
+    #         decompressed_jobs = []
+    #         for job in decompressing_set:
+    #             funcx_decompress_id = job.funcx_decompress_id
+    #             try:
+    #                 result = self.funcx_client.get_result(
+    #                     funcx_decompress_id)
+    #                 job.decompress_path = result
+    #                 job.status = JobStatus.DECOMPRESSED
+    #
+    #                 decompressed_jobs.append(job)
+    #                 decompressed_set.add(job)
+    #             # TODO: Handle more exceptions better
+    #             except Exception as e:
+    #                 if str(e) not in ["waiting-for-ep",
+    #                                   "waiting-for-nodes",
+    #                                   "waiting-for-launch",
+    #                                   "running"]:
+    #                     print(
+    #                         f"DECOMPRESS FAILED BECAUSE OF {str(e)}")
+    #                     decompressed_jobs.append(job)
+    #                     failed_set.add(job)
+    #                     print(e)
+    #                 else:
+    #                     time.sleep(1)
+    #
+    #         for job in decompressed_jobs:
+    #             decompressing_set.remove(job)
+    #
+    #         crawled_jobs = []
+    #
+    #         for job in crawling_set:
+    #             funcx_crawl_id = job.funcx_crawl_id
+    #             try:
+    #                 result = self.funcx_client.get_result(
+    #                     funcx_crawl_id)
+    #                 print(result)
+    #                 self.crawl_results.put(result)
+    #                 job.status = JobStatus.SUCCEEDED
+    #
+    #                 worker = self.worker_dict[job.worker_id]
+    #                 worker.curr_available_space += job.decompressed_size
+    #
+    #                 crawled_jobs.append(job)
+    #                 succeeded_set.add(job)
+    #             # TODO: Handle more exceptions better
+    #             except Exception as e:
+    #                 print(str(e))
+    #                 if str(e) not in ["waiting-for-ep",
+    #                                   "waiting-for-nodes",
+    #                                   "waiting-for-launch",
+    #                                   "running"]:
+    #                     print(
+    #                         f"CRAWL FAILED BECAUSE OF {str(e)}")
+    #                     crawled_jobs.append(job)
+    #                     failed_set.add(job)
+    #                     raise e
+    #                 else:
+    #                     time.sleep(1)
+    #
+    #         for job in crawled_jobs:
+    #             crawling_set.remove(job)
+    #
+    #         time.sleep(5)
+    #         self._update_kill_status()
+    #         self._update_psql_entry()
 
     def _predict_decompressed_size(self) -> None:
         """Runs decompression size predictions on all files in
@@ -378,6 +562,8 @@ class AbyssOrchestrator:
                     job.status = JobStatus.DECOMPRESSING
                     decompressing_set.add(job)
 
+                    time.sleep(1)
+
                 prefetched_set.clear()
 
     def _thread_funcx_crawl(self) -> None:
@@ -390,21 +576,25 @@ class AbyssOrchestrator:
             decompressed_set = self.job_statuses[JobStatus.DECOMPRESSED]
             crawling_set = self.job_statuses[JobStatus.CRAWLING]
 
+            print("WAITING FOR LOCK")
             with self._lock:
+                print("ACQUIRED LOCK")
                 for job in decompressed_set:
                     worker_id = job.worker_id
 
                     worker = self.worker_dict[worker_id]
                     funcx_task_id = self.funcx_client.run(self.transfer_token,
-                                                          worker.globus_eid,
                                                           job.decompress_path,
+                                                          worker.globus_eid,
                                                           "",
                                                           endpoint_id=worker.funcx_eid,
                                                           function_id=GLOBUS_CRAWLER_FUNCX_UUID)
+                    print(funcx_task_id)
                     job.funcx_crawl_id = funcx_task_id
                     job.status = JobStatus.CRAWLING
                     crawling_set.add(job)
 
+                    time.sleep(1)
                 decompressed_set.clear()
 
     def _thread_funcx_poll(self) -> None:
@@ -452,6 +642,7 @@ class AbyssOrchestrator:
                     funcx_crawl_id = job.funcx_crawl_id
                     try:
                         result = self.funcx_client.get_result(funcx_crawl_id)
+                        print(result)
                         self.crawl_results.put(result)
                         job.status = JobStatus.SUCCEEDED
 
@@ -516,7 +707,7 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     print(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[1:20]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "zip"].sort_values(by=["size_bytes"]).iloc[1:100]
 
 
     workers = [{"globus_eid": "3f487096-811c-11eb-a933-81bbe47059f4",
@@ -530,10 +721,13 @@ if __name__ == "__main__":
     abyss_id = str(uuid.uuid4())
 
     psql_conn = create_connection(read_db_config_file("/Users/ryan/Documents/CS/abyss/database.ini"))
-    sqs_conn = create_sqs_connection(**read_sqs_config_file())
+    sqs_conn = create_sqs_connection(**read_sqs_config_file("/Users/ryan/Documents/CS/abyss/sqs.ini"))
 
     orchestrator = AbyssOrchestrator(abyss_id,"4f99675c-ac1f-11ea-bee8-0e716405a293",
                                      transfer_token, compressed_files,
                                      workers, psql_conn, sqs_conn)
+    import time
 
+    t0 = time.time()
     orchestrator._orchestrate()
+    print(time.time() - t0)
