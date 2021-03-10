@@ -20,7 +20,7 @@ ABYSS_STATUS = {
     "decompressed": "INT",
     "crawling": "INT",
     "succeeded": "INT",
-    "FAILED": "INT"
+    "failed": "INT"
 }
 
 ABYSS_TABLES = {"abyss_status": ABYSS_STATUS}

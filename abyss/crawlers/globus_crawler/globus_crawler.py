@@ -10,6 +10,9 @@ from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
 
 
+GLOBUS_CRAWLER_FUNCX_UUID = "e0476019-8b77-4e96-845b-4dabd443e699"
+
+
 class GlobusCrawler(Crawler):
     def __init__(self, transfer_token: str,
                  globus_eid: str, base_path: str, grouper_name: str,
@@ -65,7 +68,8 @@ class GlobusCrawler(Crawler):
         for i in range(self.max_crawl_threads):
             thread_id = str(uuid.uuid4())
             thread = threading.Thread(target=self._thread_crawl,
-                                      args=(thread_id,))
+                                      args=(thread_id,),
+                                      daemon=True)
             thread.start()
             crawl_threads.append(thread)
             self.crawl_threads_status[thread_id] = "WORKING"
@@ -90,22 +94,40 @@ class GlobusCrawler(Crawler):
             curr = self.crawl_queue.get()
             dir_file_metadata = {}
 
-            for item in self.tc.operation_ls(self.globus_eid, path=curr):
-                item_name = item["name"]
-                full_path = os.path.join(curr, item_name)
+            try:
+                for item in self.tc.operation_ls(self.globus_eid, path=curr):
+                    item_name = item["name"]
+                    full_path = os.path.join(curr, item_name)
 
-                if item["type"] == "file":
-                    extension = self.get_extension(full_path)
-                    file_size = item["size"]
+                    if item["type"] == "file":
+                        extension = self.get_extension(full_path)
+                        file_size = item["size"]
 
-                    dir_file_metadata[full_path] = {
-                        "physical": {
-                            "size": file_size,
-                            "extension": extension
+                        dir_file_metadata[full_path] = {
+                            "physical": {
+                                "size": file_size,
+                                "extension": extension
+                            }
                         }
-                    }
-                elif item["type"] == "dir":
-                    self.crawl_queue.put(full_path)
+                    elif item["type"] == "dir":
+                        self.crawl_queue.put(full_path)
+            except globus_sdk.exc.TransferAPIError as e:
+                if e.code == 502:
+                    for item in self.tc.operation_ls(self.globus_eid,
+                                                     path=os.path.dirname(curr)):
+                        if item["name"] == curr:
+                            extension = self.get_extension(curr)
+                            file_size = item["size"]
+
+                            file_metadata = {
+                                "physical": {
+                                    "size": file_size,
+                                    "extension": extension
+                                }
+                            }
+                            self.crawl_results["metadata"].append({"path": curr,
+                                                                   "metadata": file_metadata})
+                            break
 
             for path, metadata in dir_file_metadata.items():
                 self.crawl_results["metadata"].append({"path": path,

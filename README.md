@@ -90,6 +90,11 @@ The Globus crawler crawls directories via a Globus endpoint.
 - ~~Add methods to push status updates to postgresql~~
     - ~~Add `get_status` path to flask~~
 - Create sdk
+- Figure out how/when to delete compressed/decompressed files
+    - Figure out how to delete any empty directories left behind after clearing out compressed data
+        - Might be better to just use a file name to uuid mapping to avoid needing to create the nested directory structures
+        - As files are being decompressed, there may be a time where both the compressed and decompressed file exist, so 
+        how to account for that needs to be figured out
 ## Predictors
 - ~~Create `.zip` predictor~~
 - Switch to `Keras` models instead of `sklearn` models
@@ -115,3 +120,5 @@ The Globus crawler crawls directories via a Globus endpoint.
     - ~~Pushing to SQS takes an awfully long time, perhaps just spinning up more threads will solve the issue.~~
     - ~~It might be better just for the crawler to return a massive metadata dictionary~~
         - ~~Results can just be returned via funcX and will reduce in significantly less overhead from using SQS~~
+- Handle crawl fails
+    - Perhaps add a secondary entry in metadata dictionaries for failed paths

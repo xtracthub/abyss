@@ -3,7 +3,7 @@ import os
 import tarfile
 import zipfile
 
-DECOMPRESSOR_FUNCX_UUID = "babf9053-3ff7-4d2d-b523-68cdc68db75a"
+DECOMPRESSOR_FUNCX_UUID = "d4e74a66-94ae-4b24-b867-c104bf2b5e1e"
 
 
 def decompress_zip(file_path: str, extract_dir: str) -> None:
@@ -115,4 +115,6 @@ def decompress(file_path: str, extract_dir: str) -> str:
 
 
 if __name__ == "__main__":
-    print(is_compressed("tar"))
+    import funcx
+    fx = funcx.FuncXClient()
+    print(fx.register_function(decompress))
