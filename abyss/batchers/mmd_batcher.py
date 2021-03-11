@@ -103,6 +103,8 @@ class MMDBatcher(Batcher):
                 available_space = worker_info_tuple[2]
 
                 if worker_batch_size + decompressed_size <= available_space:
+                    job.worker_id = worker_id
+
                     worker = self.worker_dict[worker_id]
                     self.worker_batches[worker_id].append(job)
 

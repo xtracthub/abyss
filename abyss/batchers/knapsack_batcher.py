@@ -112,6 +112,7 @@ class KnapsackBatcher(Batcher):
             for job in jobs:
                 decompressed_size = job.decompressed_size
                 worker.curr_available_space -= decompressed_size
+                job.worker_id = worker.worker_id
 
                 self.worker_batches[worker.worker_id].append(job)
                 self.jobs.remove(job)

@@ -95,9 +95,9 @@ The Globus crawler crawls directories via a Globus endpoint.
         - Might be better to just use a file name to uuid mapping to avoid needing to create the nested directory structures
         - As files are being decompressed, there may be a time where both the compressed and decompressed file exist, so 
         how to account for that needs to be figured out
-- Improve locking performance
-    - Tasks some tasks that require locks take too long and end up blocking other processes. Either switch to queues or
-    choose better locations to lock.
+- ~~Improve locking performance~~
+    - ~~Tasks some tasks that require locks take too long and end up blocking other processes. Either switch to queues or
+    choose better locations to lock.~~
 ## Predictors
 - ~~Create `.zip` predictor~~
 - Switch to `Keras` models instead of `sklearn` models

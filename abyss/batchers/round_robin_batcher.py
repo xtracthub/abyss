@@ -85,6 +85,7 @@ class RoundRobinBatcher(Batcher):
             for idx in range(self.num_workers):
                 worker = self.workers[worker_idx]
                 if worker.curr_available_space >= decompressed_size:
+                    job.worker_id = worker.worker_id
                     self.worker_batches[worker.worker_id].append(job)
                     worker.curr_available_space -= decompressed_size
                     break
