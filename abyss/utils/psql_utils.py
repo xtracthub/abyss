@@ -19,6 +19,7 @@ ABYSS_STATUS = {
     "decompressing": "INT",
     "decompressed": "INT",
     "crawling": "INT",
+    "consolidating": "INT",
     "succeeded": "INT",
     "failed": "INT"
 }

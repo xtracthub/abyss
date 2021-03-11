@@ -97,6 +97,7 @@ class AbyssOrchestrator:
 
         self.scheduler = Scheduler(batcher, dispatcher,
                                    list(self.worker_dict.values()), [])
+        self.worker_queues = dict()
 
         self.psql_conn = psql_conn
         self.sqs_conn = sqs_conn
@@ -440,6 +441,7 @@ class AbyssOrchestrator:
 
                 with self._lock:
                     job.decompressed_size = decompressed_size
+                    job.total_size = compressed_size + decompressed_size
                     job.status = JobStatus.PREDICTED
 
                     predicted_queue.put(job)
@@ -593,7 +595,7 @@ class AbyssOrchestrator:
             decompressing_queue = self.job_statuses[JobStatus.DECOMPRESSING]
             decompressed_queue = self.job_statuses[JobStatus.DECOMPRESSED]
             crawling_queue = self.job_statuses[JobStatus.CRAWLING]
-            succeeded_queue = self.job_statuses[JobStatus.SUCCEEDED]
+            consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
             failed_queue = self.job_statuses[JobStatus.FAILED]
 
             for _ in range(decompressing_queue.qsize()):
@@ -601,6 +603,7 @@ class AbyssOrchestrator:
                 funcx_decompress_id = job.funcx_decompress_id
                 try:
                     result = self.funcx_client.get_result(funcx_decompress_id)
+                    print(result)
                     job.decompress_path = result
                     job.status = JobStatus.DECOMPRESSED
 
@@ -623,14 +626,12 @@ class AbyssOrchestrator:
                 funcx_crawl_id = job.funcx_crawl_id
                 try:
                     result = self.funcx_client.get_result(funcx_crawl_id)
-                    print(result)
-                    self.crawl_results.put(result)
                     job.status = JobStatus.SUCCEEDED
 
                     worker = self.worker_dict[job.worker_id]
                     worker.curr_available_space += job.decompressed_size
 
-                    succeeded_queue.put(job)
+                    consolidating_queue.put((job, result))
                 # TODO: Handle more exceptions better
                 except Exception as e:
                     print(str(e))
@@ -652,10 +653,14 @@ class AbyssOrchestrator:
         None
         """
         while not self.kill_status:
-            while not(self.crawl_results.empty()):
-                crawl_result = self.crawl_results.get()
+            consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
+            succeeded_queue = self.job_statuses[JobStatus.SUCCEEDED]
+
+            while not consolidating_queue.empty():
+                job, crawl_result = consolidating_queue.get()
                 consolidated_metadata = {
-                    "compressed_path": crawl_result["root_path"],
+                    "compressed_path": job.file_path,
+                    "root_path": crawl_result["root_path"],
                     "metadata": crawl_result["metadata"],
                     "files": [],
                     "decompressed_size": 0
@@ -668,12 +673,14 @@ class AbyssOrchestrator:
                     consolidated_metadata["files"].append(file_path)
                     consolidated_metadata["decompressed_size"] += file_size
 
-                    if is_compressed(file_path):
+                    if file_metadata["is_compressed"]:
                         # TODO: Implement task resubmission
                         pass
-
+                print(consolidated_metadata)
                 put_message(self.sqs_conn, consolidated_metadata,
                             self.sqs_queue_name)
+                succeeded_queue.put(job)
+
 
 
 if __name__ == "__main__":

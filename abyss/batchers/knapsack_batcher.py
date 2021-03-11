@@ -107,11 +107,11 @@ class KnapsackBatcher(Batcher):
         for worker in self.workers:
             jobs = self._get_knapsack_items(worker)
 
-            assert sum([job.decompressed_size for job in jobs]) <= worker.curr_available_space
+            assert sum([job.total_size for job in jobs]) <= worker.curr_available_space
 
             for job in jobs:
-                decompressed_size = job.decompressed_size
-                worker.curr_available_space -= decompressed_size
+                total_size = job.total_size
+                worker.curr_available_space -= total_size
                 job.worker_id = worker.worker_id
 
                 self.worker_batches[worker.worker_id].append(job)
@@ -139,7 +139,7 @@ class KnapsackBatcher(Batcher):
                                    available_space + 1))
 
         for i in range(len(self.jobs) + 1):
-            last_item_size = math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
+            last_item_size = math.ceil(self.jobs[i - 1].total_size / self.capacity_buffer)
             for j in range(available_space + 1):
                 if i == 0 or j == 0:
                     knapsack_array[i][j] = 0
@@ -151,7 +151,7 @@ class KnapsackBatcher(Batcher):
                     knapsack_array[i][j] = knapsack_array[i - 1][j]
 
         res = knapsack_array[len(self.jobs)][available_space]
-        jobs = [job for job in self.jobs if job.decompressed_size == 0]
+        jobs = [job for job in self.jobs if job.total_size == 0]
 
         for i in range(len(self.jobs), 0, -1):
             if res <= 0:
@@ -161,7 +161,7 @@ class KnapsackBatcher(Batcher):
                 continue
             else:
                 jobs.append(self.jobs[i - 1])
-                res -= math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
-                available_space -= math.ceil(self.jobs[i - 1].decompressed_size / self.capacity_buffer)
+                res -= math.ceil(self.jobs[i - 1].total_size / self.capacity_buffer)
+                available_space -= math.ceil(self.jobs[i - 1].total_size / self.capacity_buffer)
 
         return jobs

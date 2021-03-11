@@ -16,6 +16,7 @@ class JobStatus(Enum):
     DECOMPRESSING = "DECOMPRESSING"
     DECOMPRESSED = "DECOMPRESSED"
     CRAWLING = "CRAWLING"
+    CONSOLIDATING = "CONSOLIDATING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 
@@ -28,6 +29,7 @@ class Job:
         self.file_path = file_path
         self.compressed_size = compressed_size
         self.decompressed_size = decompressed_size
+        self.total_size = compressed_size + decompressed_size
         self.worker_id = worker_id
         self.transfer_path = transfer_path
         self.decompress_path = decompress_path

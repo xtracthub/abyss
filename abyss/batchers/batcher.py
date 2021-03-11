@@ -89,7 +89,7 @@ class Batcher(ABC):
             Whether workers have enough space to process job.
         """
         for worker in self.workers:
-            if worker.max_available_space >= job.decompressed_size:
+            if worker.max_available_space >= job.total_size:
                 return False
 
         return True

@@ -86,7 +86,7 @@ class MMDBatcher(Batcher):
         for worker in self.workers:
             worker_batch = self.worker_batches[worker.worker_id]
             available_space = worker.curr_available_space
-            job_batch_size = sum([job.decompressed_size for job in worker_batch])
+            job_batch_size = sum([job.total_size for job in worker_batch])
 
             worker_info.append([worker.worker_id,
                                 job_batch_size,
@@ -94,22 +94,22 @@ class MMDBatcher(Batcher):
 
         for _ in range(self.job_queue.qsize()):
             job = self.job_queue.get()
-            decompressed_size = job.decompressed_size
-            worker_info.sort(key=lambda x: (x[1] + decompressed_size)/x[2] if x[2] > 0 else math.inf)
+            total_size = job.total_size
+            worker_info.sort(key=lambda x: (x[1] + total_size)/x[2] if x[2] > 0 else math.inf)
 
             for idx, worker_info_tuple in enumerate(worker_info):
                 worker_id = worker_info_tuple[0]
                 worker_batch_size = worker_info_tuple[1]
                 available_space = worker_info_tuple[2]
 
-                if worker_batch_size + decompressed_size <= available_space:
+                if worker_batch_size + total_size <= available_space:
                     job.worker_id = worker_id
 
                     worker = self.worker_dict[worker_id]
                     self.worker_batches[worker_id].append(job)
 
-                    worker.curr_available_space -= decompressed_size
-                    worker_info_tuple[1] += decompressed_size
+                    worker.curr_available_space -= total_size
+                    worker_info_tuple[1] += total_size
                     break
                 elif idx == len(self.workers) - 1:
                     self.job_queue.put(job)

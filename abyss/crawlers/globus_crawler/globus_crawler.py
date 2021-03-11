@@ -7,6 +7,7 @@ from queue import Queue
 import globus_sdk
 
 from abyss.crawlers.crawler import Crawler
+from abyss.decompressors import is_compressed
 from abyss.crawlers.groupers import get_grouper
 
 
@@ -106,7 +107,8 @@ class GlobusCrawler(Crawler):
                         dir_file_metadata[full_path] = {
                             "physical": {
                                 "size": file_size,
-                                "extension": extension
+                                "extension": extension,
+                                "is_compressed": is_compressed(full_path)
                             }
                         }
                     elif item["type"] == "dir":
