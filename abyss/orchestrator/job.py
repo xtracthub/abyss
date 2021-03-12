@@ -1,5 +1,7 @@
-from enum import Enum
+from __future__ import annotations
 
+from enum import Enum
+from queue import LifoQueue, Queue
 
 REQUIRED_JOB_PARAMETERS = [
     ("file_path", str),
@@ -22,20 +24,25 @@ class JobStatus(Enum):
 
 
 class Job:
-    def __init__(self, file_path=None, compressed_size=0,
-                 decompressed_size=0, worker_id=None, transfer_path=None,
+    def __init__(self, file_path=None, compressed_size=None,
+                 decompressed_size=None, total_size=None,
+                 worker_id=None, transfer_path=None,
                  decompress_path=None, funcx_decompress_id=None,
-                 funcx_crawl_id=None, status=JobStatus.UNPREDICTED):
-        self.file_path = file_path
-        self.compressed_size = compressed_size
-        self.decompressed_size = decompressed_size
-        self.total_size = compressed_size + decompressed_size
-        self.worker_id = worker_id
-        self.transfer_path = transfer_path
-        self.decompress_path = decompress_path
-        self.funcx_decompress_id = funcx_decompress_id
-        self.funcx_crawl_id = funcx_crawl_id
-        self.status = status
+                 funcx_crawl_id=None, status=JobStatus.UNPREDICTED,
+                 child_jobs=None, metadata=None):
+        self.file_path: str = file_path
+        self.compressed_size: int = compressed_size
+        self.decompressed_size: int = decompressed_size
+        self.total_size: int = total_size
+        self.worker_id: str = worker_id
+        self.transfer_path: str = transfer_path
+        self.decompress_path: str = decompress_path
+        self.funcx_decompress_id: str = funcx_decompress_id
+        self.funcx_crawl_id: str = funcx_crawl_id
+        self.status: JobStatus = status
+
+        self.child_jobs = child_jobs if child_jobs else []
+        self.metadata = metadata if metadata else dict()
 
     @staticmethod
     def validate_dict_params(job_params: dict) -> None:
@@ -64,7 +71,7 @@ class Job:
                 f"Job parameter {parameter_name} not found")
 
     @staticmethod
-    def from_dict(job_params: dict):
+    def from_dict(job_params: dict) -> Job:
         """Factory method for creating Job objects from dictionary.
 
         Parameters
@@ -79,11 +86,163 @@ class Job:
         """
         Job.validate_dict_params(job_params)
 
+        child_jobs = []
+        if "child_jobs" in job_params:
+            child_job_dicts = job_params.pop("child_jobs")
+
+            for child_job_dict in child_job_dicts:
+                child_jobs.append(Job.from_dict(child_job_dict))
+
         job = Job(**job_params)
+        job.child_jobs = child_jobs
+
         return job
 
+    @staticmethod
+    def to_dict(job: Job) -> dict:
+        """Serializes a Job object into a dictionary.
+
+        Parameters
+        ----------
+        job : Job
+            Job object to serialize.
+
+        Returns
+        -------
+        job_dict : dict
+            Dictionary of serialized job.
+        """
+
+        job_dict = {
+            "file_path": job.file_path,
+            "compressed_size": job.compressed_size,
+            "decompressed_size": job.decompressed_size,
+            "total_size": job.total_size,
+            "worker_id": job.worker_id,
+            "transfer_path": job.transfer_path,
+            "decompress_path": job.decompress_path,
+            "funcx_decompress_id": job.funcx_decompress_id,
+            "funcx_crawl_id": job.funcx_crawl_id,
+            "status": job.status.value,
+            "metadata": job.metadata
+        }
+
+        child_jobs = job.child_jobs
+        child_job_dicts = []
+
+        for child_job in child_jobs:
+            child_job_dicts.append(Job.to_dict(child_job))
+
+        job_dict["child_jobs"] = child_job_dicts
+
+        return job_dict
+
+    def bfs_iterator(self, include_root=False):
+        """Breadth-first iterator through Job tree.
+
+        Returns
+        -------
+
+        """
+        iteration_queue = Queue()
+
+        if include_root:
+            iteration_queue.put(self)
+        else:
+            for child_job in self.child_jobs:
+                iteration_queue.put(child_job)
+
+        while not iteration_queue.empty():
+            job = iteration_queue.get()
+
+            for child_job in job.child_jobs:
+                iteration_queue.put(child_job)
+
+            yield job
+
+    def dfs_iterator(self, include_root=False):
+        """Depth-first iterator through Job tree.
+
+        Returns
+        -------
+
+        """
+        iteration_queue = LifoQueue()
+
+        if include_root:
+            iteration_queue.put(self)
+        else:
+            for child_job in self.child_jobs:
+                iteration_queue.put(child_job)
+
+        while not iteration_queue.empty():
+            job = iteration_queue.get()
+
+            for child_job in job.child_jobs:
+                iteration_queue.put(child_job)
+
+            yield job
+
+    # This may get changed depending on how/when we decide to delete compressed files
+    def calculate_total_size(self):
+        """Calculates the total size of a Job tree. The total size is
+        calculated by finding the max amount of space the job will take
+        up when being processed. When the root Job is decompressed, both
+        the compressed and decompressed file exist on the worker. Then
+        the compressed file is deleted. For child Jobs, the compressed
+        file and decompressed file remain on the file system. Therefore
+        the max amount of space is max(compressed + decompressed size,
+        decompressed size of all Job nodes).
+
+        Returns
+        -------
+
+        """
+        max_total_size = self.compressed_size + self.decompressed_size
+        curr_size = self.decompressed_size
+
+        for job in self.bfs_iterator():
+            curr_size += job.decompressed_size
+            job.calculate_total_size()
+
+        self.total_size = max(max_total_size, curr_size)
 
 
+if __name__ == "__main__":
+    job_dict = {
+        "file_path": "/test",
+        "compressed_size": 10,
+        "decompressed_size": 20,
+        "child_jobs": [
+            {
+                "file_path": "/test/1",
+                "compressed_size": 5,
+                "decompressed_size": 10
+            },
+            {
+                "file_path": "/test/2",
+                "compressed_size": 3,
+                "decompressed_size": 6
+            }
+        ]
+    }
+    job_dict2 = {
+        "file_path": "/nice",
+        "compressed_size": 10,
+        "decompressed_size": 20,
+        "child_jobs": [
+            {
+                "file_path": "/test/1",
+                "compressed_size": 5,
+                "decompressed_size": 10
+            },
+            {
+                "file_path": "/test/2",
+                "compressed_size": 3,
+                "decompressed_size": 6
+            }
+        ]
+    }
 
 
 

@@ -9,9 +9,10 @@ import globus_sdk
 from abyss.crawlers.crawler import Crawler
 from abyss.decompressors import is_compressed
 from abyss.crawlers.groupers import get_grouper
+from abyss.orchestrator.job import Job
 
 
-GLOBUS_CRAWLER_FUNCX_UUID = "e0476019-8b77-4e96-845b-4dabd443e699"
+GLOBUS_CRAWLER_FUNCX_UUID = "b57e2e84-19a3-477a-9c01-d6ed8d870fa0"
 
 
 class GlobusCrawler(Crawler):
@@ -99,6 +100,7 @@ class GlobusCrawler(Crawler):
                 for item in self.tc.operation_ls(self.globus_eid, path=curr):
                     item_name = item["name"]
                     full_path = os.path.join(curr, item_name)
+                    full_path = full_path[len(self.base_path) + 1:]
 
                     if item["type"] == "file":
                         extension = self.get_extension(full_path)
@@ -119,6 +121,8 @@ class GlobusCrawler(Crawler):
                                                      path=os.path.dirname(curr)):
                         full_path = os.path.join(os.path.dirname(curr),
                                                  item["name"])
+                        full_path = full_path[len(self.base_path) + 1:]
+
                         if full_path == curr:
                             extension = self.get_extension(curr)
                             file_size = item["size"]
@@ -126,7 +130,8 @@ class GlobusCrawler(Crawler):
                             file_metadata = {
                                 "physical": {
                                     "size": file_size,
-                                    "extension": extension
+                                    "extension": extension,
+                                    "is_compressed": is_compressed(full_path)
                                 }
                             }
                             self.crawl_results["metadata"].append({"path": curr,
