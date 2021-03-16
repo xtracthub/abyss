@@ -28,7 +28,7 @@ class Job:
                  decompressed_size=None, total_size=None,
                  worker_id=None, transfer_path=None,
                  decompress_path=None, funcx_decompress_id=None,
-                 funcx_crawl_id=None, status=JobStatus.UNPREDICTED,
+                 funcx_crawl_id=None, status=None,
                  child_jobs=None, metadata=None):
         self.file_path: str = file_path
         self.compressed_size: int = compressed_size
@@ -92,6 +92,9 @@ class Job:
 
             for child_job_dict in child_job_dicts:
                 child_jobs.append(Job.from_dict(child_job_dict))
+
+        if "status" in job_params:
+            job_params["status"] = JobStatus[job_params["status"]]
 
         job = Job(**job_params)
         job.child_jobs = child_jobs
@@ -213,6 +216,7 @@ if __name__ == "__main__":
         "file_path": "/test",
         "compressed_size": 10,
         "decompressed_size": 20,
+        "status": JobStatus.UNPREDICTED.value,
         "child_jobs": [
             {
                 "file_path": "/test/1",
@@ -243,6 +247,7 @@ if __name__ == "__main__":
             }
         ]
     }
+    print(Job.from_dict(job_dict).status)
 
 
 

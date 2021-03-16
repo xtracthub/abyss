@@ -90,6 +90,8 @@ The Globus crawler crawls directories via a Globus endpoint.
             with recursively compressed data.~~
 - ~~Add methods to push status updates to postgresql~~
     - ~~Add `get_status` path to flask~~
+- For small amounts of files, the orchestrator may terminate prematurely because the kill condition is determined by whether 
+job queues are empty and sometimes they appear empty when jobs are being processed by threads
 - Create sdk
 - Figure out how/when to delete compressed/decompressed files
     - Figure out how to delete any empty directories left behind after clearing out compressed data
@@ -126,3 +128,6 @@ The Globus crawler crawls directories via a Globus endpoint.
         - ~~Results can just be returned via funcX and will reduce in significantly less overhead from using SQS~~
 - Handle crawl fails
     - Perhaps add a secondary entry in metadata dictionaries for failed paths
+- Determine if we want to use groups
+    - Groups can be determined post crawl since only file names are used to determine group membership.
+    - There is no real reason to process groups as one unit (if they are even processed at all).

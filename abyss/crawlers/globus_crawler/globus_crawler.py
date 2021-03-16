@@ -7,12 +7,10 @@ from queue import Queue
 import globus_sdk
 
 from abyss.crawlers.crawler import Crawler
-from abyss.decompressors import is_compressed
 from abyss.crawlers.groupers import get_grouper
-from abyss.orchestrator.job import Job
+from abyss.decompressors import is_compressed
 
-
-GLOBUS_CRAWLER_FUNCX_UUID = "b57e2e84-19a3-477a-9c01-d6ed8d870fa0"
+GLOBUS_CRAWLER_FUNCX_UUID = "fabd969c-5964-46c6-bf49-176de649346a"
 
 
 class GlobusCrawler(Crawler):
@@ -42,7 +40,7 @@ class GlobusCrawler(Crawler):
         self.max_crawl_threads = max_crawl_threads
 
         self.crawl_id = str(uuid.uuid4())
-        self.crawl_results = {"root_path": base_path, "metadata": []}
+        self.crawl_results = {"root_path": os.path.basename(base_path), "metadata": []}
         self.crawl_queue = Queue()
         self.crawl_threads_status = dict()
         self.grouper = get_grouper(grouper_name)

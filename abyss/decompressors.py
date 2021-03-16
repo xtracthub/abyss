@@ -3,9 +3,7 @@ import os
 import tarfile
 import zipfile
 
-from abyss.orchestrator.job import Job
-
-DECOMPRESSOR_FUNCX_UUID = "a1e42701-5c4e-40f6-aa76-14bb0cc4945b"
+DECOMPRESSOR_FUNCX_UUID = "0497572b-8908-4b5d-be23-fc599fbd2a87"
 
 
 def decompress_zip(file_path: str, extract_dir: str) -> None:
@@ -114,38 +112,3 @@ def decompress(file_path: str, extract_dir: str) -> str:
         return full_extract_dir
     else:
         raise ValueError(f"{file_path} is not a compressed file")
-
-
-def run_decompressor(job_dict: dict, decompress_dir: str):
-    """Iterates through a Job and recursively decompresses files.
-
-    Parameters
-    ----------
-    job_dict : dict
-        Job dictionary to iterate through.
-    decompress_dir : str
-        Location on worker to decompress files to.
-
-    Returns
-    -------
-
-    """
-    job = Job.from_dict(job_dict)
-
-    for job_node in job.bfs_iterator(include_root=True):
-        file_path = job_node.transfer_path
-
-        full_extract_dir = decompress(file_path, decompress_dir)
-        job_node.decompress_path = full_extract_dir
-
-        for child_job in job_node.child_jobs:
-            child_job.transfer_path = os.path.join(full_extract_dir,
-                                                   child_job.file_path)
-
-    return Job.to_dict(job)
-
-
-if __name__ == "__main__":
-    import funcx
-    fx = funcx.FuncXClient()
-    print(fx.register_function(run_decompressor, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
