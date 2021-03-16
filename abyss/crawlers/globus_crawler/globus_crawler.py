@@ -40,7 +40,8 @@ class GlobusCrawler(Crawler):
         self.max_crawl_threads = max_crawl_threads
 
         self.crawl_id = str(uuid.uuid4())
-        self.crawl_results = {"root_path": os.path.basename(base_path), "metadata": []}
+        self.crawl_results = {"root_path": os.path.basename(base_path),
+                              "metadata": {}}
         self.crawl_queue = Queue()
         self.crawl_threads_status = dict()
         self.grouper = get_grouper(grouper_name)
@@ -98,9 +99,9 @@ class GlobusCrawler(Crawler):
                 for item in self.tc.operation_ls(self.globus_eid, path=curr):
                     item_name = item["name"]
                     full_path = os.path.join(curr, item_name)
-                    full_path = full_path[len(self.base_path) + 1:]
 
                     if item["type"] == "file":
+                        full_path = full_path[len(self.base_path) + 1:]
                         extension = self.get_extension(full_path)
                         file_size = item["size"]
 
@@ -113,6 +114,7 @@ class GlobusCrawler(Crawler):
                         }
                     elif item["type"] == "dir":
                         self.crawl_queue.put(full_path)
+
             except globus_sdk.exc.TransferAPIError as e:
                 if e.code == "ExternalError.DirListingFailed.NotDirectory":
                     for item in self.tc.operation_ls(self.globus_eid,
@@ -132,13 +134,11 @@ class GlobusCrawler(Crawler):
                                     "is_compressed": is_compressed(full_path)
                                 }
                             }
-                            self.crawl_results["metadata"].append({"path": curr,
-                                                                   "metadata": file_metadata})
+                            self.crawl_results["metadata"][curr] = file_metadata
                             break
 
             for path, metadata in dir_file_metadata.items():
-                self.crawl_results["metadata"].append({"path": path,
-                                                       "metadata": dir_file_metadata[path]})
+                self.crawl_results["metadata"][path] = metadata
 
     def _get_transfer_client(self) -> None:
         """Sets self.tc to Globus transfer client using
@@ -152,3 +152,12 @@ class GlobusCrawler(Crawler):
             self.transfer_token)
 
         self.tc = globus_sdk.TransferClient(authorizer=authorizer)
+
+
+if __name__ == "__main__":
+    transfer_token = "AgodJ2zGx7lNw6ypvq900W5kX5E9gNqQpXyVGvWNpqjajNYoyQCgCoDQ1OQoKVJ7dXaEn9GMY3y741uKqXPWKI1605"
+    globus_eid = "5ecf6444-affc-11e9-98d4-0a63aa6b37da"
+
+    crawler = GlobusCrawler(transfer_token, globus_eid, "/Users/ryan/Documents/CS/abyss",
+                            "", max_crawl_threads=4)
+    print(crawler.crawl())

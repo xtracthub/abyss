@@ -41,8 +41,8 @@ class Job:
         self.funcx_crawl_id: str = funcx_crawl_id
         self.status: JobStatus = status
 
-        self.child_jobs = child_jobs if child_jobs else []
-        self.metadata = metadata if metadata else dict()
+        self.child_jobs: dict = child_jobs if child_jobs else dict()
+        self.metadata: dict = metadata if metadata else dict()
 
     @staticmethod
     def validate_dict_params(job_params: dict) -> None:
@@ -86,12 +86,12 @@ class Job:
         """
         Job.validate_dict_params(job_params)
 
-        child_jobs = []
+        child_jobs = dict()
         if "child_jobs" in job_params:
             child_job_dicts = job_params.pop("child_jobs")
 
-            for child_job_dict in child_job_dicts:
-                child_jobs.append(Job.from_dict(child_job_dict))
+            for file_path, child_job_dict in child_job_dicts.items():
+                child_jobs[file_path] = (Job.from_dict(child_job_dict))
 
         if "status" in job_params:
             job_params["status"] = JobStatus[job_params["status"]]
@@ -115,7 +115,6 @@ class Job:
         job_dict : dict
             Dictionary of serialized job.
         """
-
         job_dict = {
             "file_path": job.file_path,
             "compressed_size": job.compressed_size,
@@ -131,10 +130,10 @@ class Job:
         }
 
         child_jobs = job.child_jobs
-        child_job_dicts = []
+        child_job_dicts = {}
 
-        for child_job in child_jobs:
-            child_job_dicts.append(Job.to_dict(child_job))
+        for file_path, child_job in child_jobs.items():
+            child_job_dicts[file_path](Job.to_dict(child_job))
 
         job_dict["child_jobs"] = child_job_dicts
 
@@ -152,13 +151,13 @@ class Job:
         if include_root:
             iteration_queue.put(self)
         else:
-            for child_job in self.child_jobs:
+            for child_job in self.child_jobs.values():
                 iteration_queue.put(child_job)
 
         while not iteration_queue.empty():
             job = iteration_queue.get()
 
-            for child_job in job.child_jobs:
+            for child_job in job.child_jobs.values():
                 iteration_queue.put(child_job)
 
             yield job
@@ -175,13 +174,13 @@ class Job:
         if include_root:
             iteration_queue.put(self)
         else:
-            for child_job in self.child_jobs:
+            for child_job in self.child_jobs.values():
                 iteration_queue.put(child_job)
 
         while not iteration_queue.empty():
             job = iteration_queue.get()
 
-            for child_job in job.child_jobs:
+            for child_job in job.child_jobs.values():
                 iteration_queue.put(child_job)
 
             yield job
@@ -209,6 +208,37 @@ class Job:
             job.calculate_total_size()
 
         self.total_size = max(max_total_size, curr_size)
+
+    def consolidate_metadata(self) -> dict:
+        """Recursively consolidates metadata of root Job and child Jobs.
+
+        Returns
+        -------
+        consolidated_metadata : dict
+            Combined metadata entries of root Jobs and child Jobs.
+        """
+        consolidated_metadata = {
+            "compressed_path": self.file_path,
+            "root_path": self.metadata["root_path"],
+            "metadata": [],
+            "files": [],
+            "decompressed_size": 0
+        }
+
+        for file_path, file_metadata in self.metadata["metadata"].items():
+            metadata = file_metadata
+
+            if file_path in self.child_jobs:
+                child_job = self.child_jobs[file_path]
+                child_job_metadata = child_job.consolidate_metadata
+
+                metadata["compressed_metadata"] = child_job_metadata
+
+            consolidated_metadata["metadata"].append(file_metadata)
+            consolidated_metadata["files"].append(file_path)
+            consolidated_metadata["decompressed_size"] += file_metadata["metadata"]["physical"]["size"]
+
+        return consolidated_metadata
 
 
 if __name__ == "__main__":

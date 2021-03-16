@@ -701,33 +701,38 @@ class AbyssOrchestrator:
         None
         """
         while not self.kill_status:
+            unpredicted_queue = self.job_statuses[JobStatus.UNPREDICTED]
             consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
             succeeded_queue = self.job_statuses[JobStatus.SUCCEEDED]
 
             while not consolidating_queue.empty():
                 job = consolidating_queue.get()
-                crawl_result = job.metadata
                 print(f"{job.file_path} CONSOLIDATING")
-                print(crawl_result)
-                consolidated_metadata = {
-                    "compressed_path": job.file_path,
-                    "root_path": crawl_result["root_path"],
-                    "metadata": crawl_result["metadata"],
-                    "files": [],
-                    "decompressed_size": 0
-                }
 
-                for file_metadata in crawl_result["metadata"]:
-                    file_path = file_metadata["path"]
-                    file_size = file_metadata["metadata"]["physical"]["size"]
-                    is_compressed = file_metadata["metadata"]["physical"]["is_compressed"]
+                resubmit_task = False
+                for job_node in job.bfs_iterator(include_root=True):
+                    for file_metadata in job_node.metadata.values():
+                        file_path = file_metadata["path"]
+                        file_size = file_metadata["metadata"]["physical"]["size"]
+                        is_compressed = file_metadata["metadata"]["physical"]["is_compressed"]
 
-                    consolidated_metadata["files"].append(file_path)
-                    consolidated_metadata["decompressed_size"] += file_size
+                        if is_compressed:
+                            if file_path in job_node.child_jobs:
+                                break
+                            else:
+                                child_job = Job(
+                                    file_path=file_path,
+                                    compressed_size=file_size,
+                                    status=JobStatus.UNPREDICTED
+                                )
+                                job_node.child_jobs[file_path] = child_job
+                                resubmit_task = True
 
-                    if is_compressed:
-                        # TODO: Implement task resubmission
-                        pass
+                if resubmit_task:
+                    unpredicted_queue.put(job)
+                    continue
+
+                consolidated_metadata = job.consolidate_metadata()
                 print(consolidated_metadata)
                 put_message(self.sqs_conn, consolidated_metadata,
                             self.sqs_queue_name)
@@ -737,6 +742,7 @@ class AbyssOrchestrator:
                         job_node.status = JobStatus.SUCCEEDED
 
                 succeeded_queue.put(job)
+
 
 if __name__ == "__main__":
     import pandas as pd
@@ -757,7 +763,7 @@ if __name__ == "__main__":
                 "decompress_dir": "/home/tskluzac/ryan/results"}]
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
-    transfer_token = 'AgKeayWllbj8xlQpYOje2xOOparVBn0j6oPOpe3b6X9Ykk3Vy0SeCq78QBxJwqlEw2ed2Dem2wnrNQf1bwalqC5nwy'
+    transfer_token = 'AgodJ2zGx7lNw6ypvq900W5kX5E9gNqQpXyVGvWNpqjajNYoyQCgCoDQ1OQoKVJ7dXaEn9GMY3y741uKqXPWKI1605'
     abyss_id = str(uuid.uuid4())
     print(abyss_id)
 
