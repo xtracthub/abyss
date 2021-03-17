@@ -121,9 +121,8 @@ class GlobusCrawler(Crawler):
                                                      path=os.path.dirname(curr)):
                         full_path = os.path.join(os.path.dirname(curr),
                                                  item["name"])
-                        full_path = full_path[len(self.base_path) + 1:]
-
                         if full_path == curr:
+                            full_path = full_path[len(self.base_path) + 1:]
                             extension = self.get_extension(curr)
                             file_size = item["size"]
 
@@ -131,10 +130,10 @@ class GlobusCrawler(Crawler):
                                 "physical": {
                                     "size": file_size,
                                     "extension": extension,
-                                    "is_compressed": is_compressed(full_path)
+                                    "is_compressed": is_compressed(curr)
                                 }
                             }
-                            self.crawl_results["metadata"][curr] = file_metadata
+                            self.crawl_results["metadata"][full_path] = file_metadata
                             break
 
             for path, metadata in dir_file_metadata.items():
@@ -156,8 +155,8 @@ class GlobusCrawler(Crawler):
 
 if __name__ == "__main__":
     transfer_token = "AgodJ2zGx7lNw6ypvq900W5kX5E9gNqQpXyVGvWNpqjajNYoyQCgCoDQ1OQoKVJ7dXaEn9GMY3y741uKqXPWKI1605"
-    globus_eid = "5ecf6444-affc-11e9-98d4-0a63aa6b37da"
+    globus_eid = "3f487096-811c-11eb-a933-81bbe47059f4"
 
-    crawler = GlobusCrawler(transfer_token, globus_eid, "/Users/ryan/Documents/CS/abyss",
+    crawler = GlobusCrawler(transfer_token, globus_eid, "/home/tskluzac/ryan/results/fig01",
                             "", max_crawl_threads=4)
     print(crawler.crawl())

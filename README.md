@@ -78,13 +78,13 @@ The Globus crawler crawls directories via a Globus endpoint.
 - ~~Clean up imports~~
 
 ## Orchestrator
-- Add logic to handle crawler metadata
+~~- Add logic to handle crawler metadata
     - ~~Consolidate metadata for a single directory into one dictionary and push to SQS~~
-    - How do we want to handle recursively compressed data (like `.tar.gz`)?
+    ~~- How do we want to handle recursively compressed data (like `.tar.gz`)?
         - Add metadata parameter to help with keeping track of metadata when resubmitting tasks
         - It could be costly to re-transfer files if we've already decompressed a file on a worker
         - Decompressing additional data could result in OOM errors
-        - Most likely will need to add additional logic in orchestrator to reprocess data.
+        - Most likely will need to add additional logic in orchestrator to reprocess data.~~
             - ~~I think the easiest way to add the logic is to create a `Job` class that holds information like the 
             status, paths to crawl, etc. That way, when reprocessing files, we can just modify the `Job` instance to deal 
             with recursively compressed data.~~

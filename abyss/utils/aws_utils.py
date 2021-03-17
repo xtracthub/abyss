@@ -10,10 +10,10 @@ from flask import Flask
 PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
 
 
-def read_sqs_config_file(config_file=os.path.join(PROJECT_ROOT,
+def read_aws_config_file(config_file=os.path.join(PROJECT_ROOT,
                                                  "sqs.ini"),
-                        section="sqs") -> dict:
-    """Reads PostgreSQL credentials from a .ini file.
+                         section="sqs") -> dict:
+    """Reads AWS credentials from a .ini file.
 
     Parameters
     ----------
@@ -44,8 +44,8 @@ def read_sqs_config_file(config_file=os.path.join(PROJECT_ROOT,
     return credentials
 
 
-def read_flask_sqs_config(app: Flask) -> dict:
-    """Reads PostgreSQL credentials from a Flask app configuration.
+def read_flask_aws_config(app: Flask) -> dict:
+    """Reads AWS credentials from a Flask app configuration.
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def read_flask_sqs_config(app: Flask) -> dict:
 
 def create_sqs_connection(aws_access: str, aws_secret: str,
                           region_name: str):
-    """Creates SQS queue.
+    """Creates connection to SQS.
 
     Parameters
     ----------
@@ -194,4 +194,53 @@ def put_messages(sqs_conn, messages: List[Dict], queue_name: str):
     response = queue.send_messages(Entries=sqs_messages)
 
     return response
+
+
+def create_s3_connection(aws_access: str, aws_secret: str,
+                         region_name: str):
+    """Creates connection to S3.
+
+    Parameters
+    ----------
+    aws_access : str
+        AWS access key ID.
+    aws_secret : str
+        AWS secret access key.
+    region_name : str
+        Region for S3.
+
+    Returns
+    -------
+        boto3 S3 resource.
+    """
+    s3 = boto3.client("s3",
+                      aws_access_key_id=aws_access,
+                      aws_secret_access_key=aws_secret,
+                      region_name=region_name)
+
+    return s3
+
+
+def s3_upload_file(s3_conn, s3_bucket: str,
+                   file_path: str, s3_file_path: str):
+    """Uploads a file to an s3 bucket.
+
+    Parameters
+    ----------
+    s3_conn
+        Connection client to S3.
+    s3_bucket : str
+        S3 bucket to upload to.
+    file_path : str
+        File path to upload to S3.
+    s3_file_path : str
+        Path on S3 to upload to.
+
+    Returns
+    -------
+
+    """
+    with open(file_path, "rb") as f:
+        s3_conn.upload_fileobj(f, s3_bucket, s3_file_path)
+
 

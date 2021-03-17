@@ -6,8 +6,8 @@ from abyss.authentication.auth import authenticate
 from abyss.orchestrator.abyss_orchestrator import AbyssOrchestrator
 from abyss.utils.psql_utils import read_flask_db_config, \
     create_connection, create_table_entry, select_by_column
-from abyss.utils.sqs_utils import create_sqs_connection, \
-    read_flask_sqs_config
+from abyss.utils.aws_utils import create_sqs_connection, \
+    read_flask_aws_config
 
 orchestrate_api = Blueprint("orchestrate", __name__)
 
@@ -55,7 +55,7 @@ def launch():
     db_entry = {"abyss_id": abyss_id, "client_id": client_id}
     create_table_entry(psql_conn, "abyss_status", **db_entry)
 
-    sqs_conn = create_sqs_connection(**read_flask_sqs_config(app))
+    sqs_conn = create_sqs_connection(**read_flask_aws_config(app))
 
     grouper = ""
     batcher = "mmd"

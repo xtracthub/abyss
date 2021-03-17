@@ -5,7 +5,7 @@ import uuid
 from queue import Queue
 from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
-from abyss.utils.sqs_utils import put_messages, make_queue
+from abyss.utils.aws_utils import put_messages, make_queue
 
 
 @DeprecationWarning

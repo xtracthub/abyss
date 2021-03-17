@@ -50,9 +50,14 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
         full_extract_dir = decompress(file_path, decompress_dir)
         job_node.decompress_path = full_extract_dir
 
-        for child_job in job_node.child_jobs:
-            child_job.transfer_path = os.path.join(full_extract_dir,
-                                                   child_job.file_path)
+        for child_job in job_node.child_jobs.values():
+            # TODO: Fix this gross if statement. We might want to decompress
+            # gz files into a directory
+            if os.path.basename(full_extract_dir) == child_job.file_path:
+                child_job.transfer_path = full_extract_dir
+            else:
+                child_job.transfer_path = os.path.join(full_extract_dir,
+                                                       child_job.file_path)
 
         if job_node.status == JobStatus.PREFETCHED:
             job_node.status = JobStatus.DECOMPRESSING
@@ -65,3 +70,4 @@ if __name__ == "__main__":
     fx = funcx.FuncXClient()
     print(fx.register_function(run_decompressor, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
     print(fx.register_function(run_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
+

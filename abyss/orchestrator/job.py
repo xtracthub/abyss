@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from enum import Enum
 from queue import LifoQueue, Queue
 
@@ -130,10 +131,10 @@ class Job:
         }
 
         child_jobs = job.child_jobs
-        child_job_dicts = {}
+        child_job_dicts = dict()
 
         for file_path, child_job in child_jobs.items():
-            child_job_dicts[file_path](Job.to_dict(child_job))
+            child_job_dicts[file_path] = (Job.to_dict(child_job))
 
         job_dict["child_jobs"] = child_job_dicts
 
@@ -225,18 +226,25 @@ class Job:
             "decompressed_size": 0
         }
 
+        root_path = self.metadata["root_path"]
         for file_path, file_metadata in self.metadata["metadata"].items():
             metadata = file_metadata
+            metadata["file_path"] = file_path
 
-            if file_path in self.child_jobs:
-                child_job = self.child_jobs[file_path]
-                child_job_metadata = child_job.consolidate_metadata
+            if file_path == "":
+                child_file_path = root_path
+            else:
+                child_file_path = os.path.join(root_path, file_path)
+
+            if child_file_path in self.child_jobs:
+                child_job = self.child_jobs[child_file_path]
+                child_job_metadata = child_job.consolidate_metadata()
 
                 metadata["compressed_metadata"] = child_job_metadata
 
             consolidated_metadata["metadata"].append(file_metadata)
             consolidated_metadata["files"].append(file_path)
-            consolidated_metadata["decompressed_size"] += file_metadata["metadata"]["physical"]["size"]
+            consolidated_metadata["decompressed_size"] += file_metadata["physical"]["size"]
 
         return consolidated_metadata
 
@@ -277,7 +285,10 @@ if __name__ == "__main__":
             }
         ]
     }
-    print(Job.from_dict(job_dict).status)
+    x = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': 'c9a8d41d-2ff7-44f9-a441-36c1c7386c16', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data//UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'decompress_path': '/home/tskluzac/ryan/results/fig01.tar', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'fig01.tar', 'metadata': {'': {'physical': {'size': 102400, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'fig01.tar': {'file_path': 'fig01.tar', 'compressed_size': 102400, 'decompressed_size': 7, 'total_size': 102407, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/fig01.tar', 'decompress_path': '/home/tskluzac/ryan/results/fig01', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CRAWLING', 'metadata': {'root_path': 'fig01', 'metadata': {'fig01/._plot_spectral_albedo.py': {'physical': {'size': 210, 'extension': '.py', 'is_compressed': False}}, 'fig01/._re_164um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_164um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._snicar_spectral_snow_albedo.pdf': {'physical': {'size': 233, 'extension': '.pdf', 'is_compressed': False}}, 'fig01/plot_spectral_albedo.py': {'physical': {'size': 2171, 'extension': '.py', 'is_compressed': False}}, 'fig01/re_164um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_164um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/snicar_spectral_snow_albedo.pdf': {'physical': {'size': 28293, 'extension': '.pdf', 'is_compressed': False}}}}, 'child_jobs': {}}}}
+
+    y = Job.from_dict(x)
+    print(y.consolidate_metadata())
 
 
 
