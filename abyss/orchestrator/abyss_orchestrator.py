@@ -95,6 +95,8 @@ class AbyssOrchestrator:
         for compressed_file in compressed_files:
             job = Job.from_dict(compressed_file)
             job.status = JobStatus.UNPREDICTED
+            job.file_id = f"{str(uuid.uuid4())}"
+            # job.file_extension = os.path.splitext(job.file_path)[1][1:]
             unpredicted_set.put(job)
 
         self.scheduler = Scheduler(batcher, dispatcher,
@@ -295,7 +297,8 @@ class AbyssOrchestrator:
                             job_node.status = JobStatus.PREDICTED
 
                 predicted_queue.put(job)
-                self.thread_statuses["predictor_thread"] = False
+
+            self.thread_statuses["predictor_thread"] = False
 
     def _thread_schedule_jobs(self) -> None:
         """Schedules items from self.predicted_files into
@@ -349,10 +352,10 @@ class AbyssOrchestrator:
                     file_path = job.file_path
                     worker_id = job.worker_id
 
-                    prefetcher.transfer(file_path)
+                    prefetcher.transfer(file_path, job.file_id)
 
                     with self._lock:
-                        job.transfer_path = f"{self.worker_dict[worker_id].transfer_dir}/{file_path}"
+                        job.transfer_path = f"{self.worker_dict[worker_id].transfer_dir}/{job.file_id}"
 
                         for job_node in job.bfs_iterator(include_root=True):
                             if job_node.status == JobStatus.SCHEDULED:
@@ -382,7 +385,9 @@ class AbyssOrchestrator:
                 worker_id = job.worker_id
                 prefetcher = self.prefetchers[worker_id]
 
+                print("GETTING STATUS")
                 prefetcher_status = prefetcher.get_transfer_status(file_path)
+                print(prefetcher_status)
                 if prefetcher_status == PrefetcherStatuses.SUCCEEDED:
                     for job_node in job.bfs_iterator(include_root=True):
                         if job_node.status == JobStatus.PREFETCHING:
@@ -505,6 +510,7 @@ class AbyssOrchestrator:
                     decompressed_queue.put(job)
                 # TODO: Handle more exceptions better
                 except Exception as e:
+                    print("RIPPPP")
                     if str(e) not in ["waiting-for-ep",
                                       "waiting-for-nodes",
                                       "waiting-for-launch", "running"]:
@@ -515,8 +521,8 @@ class AbyssOrchestrator:
 
                         failed_queue.put(job)
                         print(e)
-                        raise e
                     else:
+                        print(e)
                         decompressing_queue.put(job)
 
                 time.sleep(1)
@@ -584,10 +590,7 @@ class AbyssOrchestrator:
                         file_size = file_metadata["physical"]["size"]
                         is_compressed = file_metadata["physical"]["is_compressed"]
 
-                        if file_path == "":
-                            child_file_path = root_path
-                        else:
-                            child_file_path = os.path.join(root_path, file_path)
+                        child_file_path = os.path.join(root_path, file_path)
 
                         if is_compressed:
                             if child_file_path in job_node.child_jobs:
@@ -595,6 +598,7 @@ class AbyssOrchestrator:
                             else:
                                 child_job = Job(
                                     file_path=child_file_path,
+                                    file_id=f"{str(uuid.uuid4())}",
                                     compressed_size=file_size,
                                     status=JobStatus.UNPREDICTED
                                 )
@@ -626,8 +630,8 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     print(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[2:3]
-    print(filtered_files)
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[8:9]
+    print(sum(filtered_files.size_bytes))
 
 
     workers = [{"globus_eid": "3f487096-811c-11eb-a933-81bbe47059f4",
@@ -652,3 +656,7 @@ if __name__ == "__main__":
     t0 = time.time()
     orchestrator._orchestrate()
     print(time.time() - t0)
+    """
+    TODO: Check out why /UMich/download/DeepBlueData_pv63g053w/repro_200k_annotations.tar.gz is not 
+    producing any metadata. There should be ~800mb worth of files after decompressing tar
+    """

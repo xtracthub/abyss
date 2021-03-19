@@ -3,7 +3,7 @@ import os
 import tarfile
 import zipfile
 
-DECOMPRESSOR_FUNCX_UUID = "e74ba8ab-5ba4-4fbb-b63b-8c798a7ffdc9"
+DECOMPRESSOR_FUNCX_UUID = "eed81bcb-5e60-4934-820a-793b53ce2d5b"
 
 
 def decompress_zip(file_path: str, extract_dir: str) -> None:
@@ -45,7 +45,7 @@ def decompress_tar(file_path: str, extract_dir: str) -> None:
     extract_dir : str
         Path to directory to decompress to.
     """
-    with tarfile.open(file_path, "r:gz") as tar_f:
+    with tarfile.open(file_path, "r:") as tar_f:
         tar_f.extractall(extract_dir)
 
 
@@ -71,13 +71,15 @@ def is_compressed(file_path: str) -> bool:
     return False
 
 
-def decompress(file_path: str, extract_dir: str) -> str:
+def decompress(file_path: str, file_type: str, decompress_path: str) -> str:
     """Recursively decompresses compressed files.
 
     Parameters
     ----------
     file_path : str
         Path to compressed file to decompress
+    file_type : str
+        File type of file to be decompressed ("zip", "gz", "tar").
     extract_dir : str
         Path to directory to to extract file contents to. All compressed files
         with the exception of .gz files are extracted to a subdirectory inside
@@ -92,23 +94,11 @@ def decompress(file_path: str, extract_dir: str) -> str:
     full_extract_dir : str
         Path file_path is extracted to.
     """
-    if is_compressed(file_path):
-        if file_path.endswith(".zip"):
-            full_extract_dir = os.path.join(extract_dir,
-                                            os.path.basename(file_path)[:-4])
-            decompress_zip(file_path, full_extract_dir)
-        elif file_path.endswith(".tar"):
-            full_extract_dir = os.path.join(extract_dir,
-                                            os.path.basename(file_path)[:-4])
-            decompress_tar(file_path, full_extract_dir)
-
-        elif file_path.endswith(".gz"):
-            full_extract_dir = os.path.join(extract_dir,
-                                            os.path.basename(file_path)[:-3])
-            decompress_gz(file_path, full_extract_dir)
-        else:
-            raise ValueError(f"{file_path} is not a supported compressed file")
-
-        return full_extract_dir
+    if file_type == "zip":
+        decompress_zip(file_path, decompress_path)
+    elif file_type == "tar":
+        decompress_tar(file_path, decompress_path)
+    elif file_type == "gz":
+        decompress_gz(file_path, decompress_path)
     else:
-        raise ValueError(f"{file_path} is not a compressed file")
+        raise ValueError(f"{file_type} is not a supported type")

@@ -10,7 +10,7 @@ from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
 from abyss.decompressors import is_compressed
 
-GLOBUS_CRAWLER_FUNCX_UUID = "e1949f34-be7a-4490-aba8-6c19d867dbba"
+GLOBUS_CRAWLER_FUNCX_UUID = "b6b1af53-cd63-4631-94fb-19bf0193aa9e"
 
 
 class GlobusCrawler(Crawler):

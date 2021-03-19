@@ -25,13 +25,16 @@ class JobStatus(Enum):
 
 
 class Job:
-    def __init__(self, file_path=None, compressed_size=None,
+    def __init__(self, file_path=None, file_id=None,
+                 compressed_size=None,
                  decompressed_size=None, total_size=None,
                  worker_id=None, transfer_path=None,
                  decompress_path=None, funcx_decompress_id=None,
                  funcx_crawl_id=None, status=None,
                  child_jobs=None, metadata=None):
         self.file_path: str = file_path
+        self.file_id: str = file_id
+        # self.file_extension: str = file_extension
         self.compressed_size: int = compressed_size
         self.decompressed_size: int = decompressed_size
         self.total_size: int = total_size
@@ -118,6 +121,8 @@ class Job:
         """
         job_dict = {
             "file_path": job.file_path,
+            "file_id": job.file_id,
+            # "file_extension": job.file_extension,
             "compressed_size": job.compressed_size,
             "decompressed_size": job.decompressed_size,
             "total_size": job.total_size,
