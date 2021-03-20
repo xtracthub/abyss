@@ -7,8 +7,8 @@ from typing import Dict, List
 
 from funcx import FuncXClient
 
-from abyss.crawlers.globus_crawler.globus_crawler import \
-    GLOBUS_CRAWLER_FUNCX_UUID
+from abyss.crawlers.local_crawler.local_crawler import \
+    LOCAL_CRAWLER_FUNCX_UUID
 from abyss.decompressors import DECOMPRESSOR_FUNCX_UUID
 from abyss.orchestrator.job import Job, JobStatus
 from abyss.orchestrator.worker import Worker
@@ -461,11 +461,9 @@ class AbyssOrchestrator:
 
                 worker = self.worker_dict[worker_id]
                 funcx_task_id = self.funcx_client.run(job_dict,
-                                                      self.transfer_token,
-                                                      worker.globus_eid,
                                                       "",
                                                       endpoint_id=worker.funcx_eid,
-                                                      function_id=GLOBUS_CRAWLER_FUNCX_UUID)
+                                                      function_id=LOCAL_CRAWLER_FUNCX_UUID)
 
                 for job_node in job.bfs_iterator(include_root=True):
                     job_node.funcx_crawl_id = funcx_task_id
@@ -641,7 +639,7 @@ if __name__ == "__main__":
                 "decompress_dir": "/home/tskluzac/ryan/results"}]
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
-    transfer_token = 'AgvKvXpGaDNYoNyE0p3p4q8BwnNvBn2WBK5JDkw05nBrawwnpNIzCQ3JBpNEQPK1DgyBB1YlYq82pEi9V9xO4HBvg6'
+    transfer_token = 'AgVpWBQw2YPky1XaEjBnYrod9l8dq4jWl1zQ6D3yQDk6vM3ejvibCdnkGnvXwOvPGMBkGQKWGwDp11Hl8E8MPspD3o'
     abyss_id = str(uuid.uuid4())
     print(abyss_id)
 

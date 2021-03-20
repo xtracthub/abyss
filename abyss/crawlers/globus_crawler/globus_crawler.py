@@ -10,7 +10,7 @@ from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
 from abyss.decompressors import is_compressed
 
-GLOBUS_CRAWLER_FUNCX_UUID = "b6b1af53-cd63-4631-94fb-19bf0193aa9e"
+GLOBUS_CRAWLER_FUNCX_UUID = "caa63da7-2db5-4ed3-b025-7f540b380baf"
 
 
 class GlobusCrawler(Crawler):
@@ -39,7 +39,6 @@ class GlobusCrawler(Crawler):
         self.base_path = base_path
         self.max_crawl_threads = max_crawl_threads
 
-        self.crawl_id = str(uuid.uuid4())
         self.crawl_results = {"root_path": os.path.basename(base_path),
                               "metadata": {}}
         self.crawl_queue = Queue()
@@ -93,6 +92,7 @@ class GlobusCrawler(Crawler):
             self.crawl_threads_status[thread_id] = "WORKING"
 
             curr = self.crawl_queue.get()
+            print(curr)
             dir_file_metadata = {}
 
             try:
@@ -114,6 +114,9 @@ class GlobusCrawler(Crawler):
                         }
                     elif item["type"] == "dir":
                         self.crawl_queue.put(full_path)
+            except Exception as e:
+                print(e)
+                raise e
 
             except globus_sdk.exc.TransferAPIError as e:
                 if e.code == "ExternalError.DirListingFailed.NotDirectory":
@@ -154,9 +157,9 @@ class GlobusCrawler(Crawler):
 
 
 if __name__ == "__main__":
-    transfer_token = "AgodJ2zGx7lNw6ypvq900W5kX5E9gNqQpXyVGvWNpqjajNYoyQCgCoDQ1OQoKVJ7dXaEn9GMY3y741uKqXPWKI1605"
-    globus_eid = "3f487096-811c-11eb-a933-81bbe47059f4"
+    transfer_token = "AgvKvXpGaDNYoNyE0p3p4q8BwnNvBn2WBK5JDkw05nBrawwnpNIzCQ3JBpNEQPK1DgyBB1YlYq82pEi9V9xO4HBvg6"
+    globus_eid = "5ecf6444-affc-11e9-98d4-0a63aa6b37da"
 
-    crawler = GlobusCrawler(transfer_token, globus_eid, "/home/tskluzac/ryan/results/fig01",
+    crawler = GlobusCrawler(transfer_token, globus_eid, "/Users/ryan/Documents/CS/abyss",
                             "", max_crawl_threads=4)
     print(crawler.crawl())
