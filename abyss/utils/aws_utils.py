@@ -244,3 +244,24 @@ def s3_upload_file(s3_conn, s3_bucket: str,
         s3_conn.upload_fileobj(f, s3_bucket, s3_file_path)
 
 
+def s3_download_file(s3_conn, s3_bucket: str,
+                     file_path: str, s3_file_path: str):
+    """Downloads a file from an s3 bucket.
+
+    Parameters
+    ----------
+    s3_conn
+        Connection client to S3.
+    s3_bucket : str
+        S3 bucket to upload to.
+    file_path : str
+        File path to download S3 file.
+    s3_file_path : str
+        Path on S3 to download.
+
+    Returns
+    -------
+
+    """
+    s3_conn.download_file(s3_bucket, file_path, s3_file_path)
+

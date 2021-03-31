@@ -1,13 +1,15 @@
+import json
+import os
 import uuid
 
 from flask import abort, Blueprint, request, current_app as app
 
 from abyss.authentication.auth import authenticate
 from abyss.orchestrator.abyss_orchestrator import AbyssOrchestrator
+from abyss.utils.aws_utils import create_sqs_connection, \
+    read_flask_aws_config, create_s3_connection, s3_download_file
 from abyss.utils.psql_utils import read_flask_db_config, \
     create_connection, create_table_entry, select_by_column
-from abyss.utils.aws_utils import create_sqs_connection, \
-    read_flask_aws_config
 
 orchestrate_api = Blueprint("orchestrate", __name__)
 
@@ -103,8 +105,8 @@ def get_status():
     client_id = authenticate(request)
 
     conn = create_connection(read_flask_db_config(app))
-    status_params = request.json
-    abyss_id = status_params["abyss_id"]
+    request_params = request.json
+    abyss_id = request_params["abyss_id"]
 
     user_statuses = select_by_column(conn, "abyss_status",
                                      **{"client_id": client_id,
@@ -114,3 +116,54 @@ def get_status():
         return user_statuses[0]
     else:
         abort(f"Abyss ID {abyss_id} does not match any crawls for user {client_id}")
+
+
+@orchestrate_api.route("/get_metadata", methods=["GET"])
+def get_metadata():
+    """Handles requests for retrieving metadata.
+
+    Request Parameters
+    _______
+    abyss_id : str
+        ID for Abyss job.
+
+    Returns
+    -------
+
+    """
+    client_id = authenticate(request)
+
+    s3_conn = create_s3_connection(**read_flask_aws_config(app))
+    psql_conn = create_connection(read_flask_db_config(app))
+    request_params = request.json
+    abyss_id = request_params["abyss_id"]
+
+    user_statuses = select_by_column(psql_conn, "abyss_status",
+                                     **{"client_id": client_id,
+                                        "abyss_id": abyss_id})
+
+    if not user_statuses:
+        abort(f"Abyss ID {abyss_id} does not match any crawls for user {client_id}")
+
+    try:
+        metadata = dict()
+
+        metadata_file_path = os.path.join("/tmp", f"{abyss_id}.txt")
+        s3_download_file(s3_conn, "xtract-abyss", metadata_file_path, abyss_id)
+
+        with open(metadata_file_path) as f:
+             for line in f.readlines():
+                 line_metadata = json.loads(line)
+
+                 metadata[line_metadata["compressed_path"]] = line_metadata
+
+        os.remove(metadata_file_path)
+
+        return metadata
+    except Exception as e:
+        print(e)
+        abort(f"Metadata not found for Abyss ID {abyss_id}")
+
+
+
+
