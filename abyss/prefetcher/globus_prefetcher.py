@@ -182,9 +182,20 @@ class GlobusPrefetcher:
         -------
         None
         """
-        tdata = globus_sdk.TransferData(self.tc,
-                                        self.globus_source_eid,
-                                        self.globus_dest_eid)
+        try:
+            tdata = globus_sdk.TransferData(self.tc,
+                                            self.globus_source_eid,
+                                            self.globus_dest_eid)
+        except globus_sdk.exc.TransferAPIError as e:
+            logger.error(f"Prefetcher caught {e}")
+
+            with self.lock:
+                source_file_path = file_path_mapping["source_file_path"]
+                task_id = self.file_id_mapping[source_file_path]
+
+                self.id_status[task_id] = PrefetcherStatuses.FAILED
+
+            return
 
         source_file_path = file_path_mapping["source_file_path"]
         dest_file_name = file_path_mapping["dest_file_name"]
@@ -226,9 +237,21 @@ class GlobusPrefetcher:
         -------
         None
         """
-        tdata = globus_sdk.TransferData(self.tc,
-                                        self.globus_source_eid,
-                                        self.globus_dest_eid)
+        try:
+            tdata = globus_sdk.TransferData(self.tc,
+                                            self.globus_source_eid,
+                                            self.globus_dest_eid)
+        except globus_sdk.exc.TransferAPIError as e:
+            logger.error(f"Prefetcher caught {e}")
+
+            with self.lock:
+                for file_path_mapping in file_path_mappings:
+                    source_file_path = file_path_mapping["source_file_path"]
+                    task_id = self.file_id_mapping[source_file_path]
+
+                    self.id_status[task_id] = PrefetcherStatuses.FAILED
+
+            return
 
         for file_path_mapping in file_path_mappings:
             source_file_path = file_path_mapping["source_file_path"]
