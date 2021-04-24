@@ -90,14 +90,17 @@ The Globus crawler crawls directories via a Globus endpoint.
             with recursively compressed data.~~
 - ~~Add methods to push status updates to postgresql~~
     - ~~Add `get_status` path to flask~~
-- For small amounts of files, the orchestrator may terminate prematurely because the kill condition is determined by whether 
-job queues are empty and sometimes they appear empty when jobs are being processed by threads
+- ~~For small amounts of files, the orchestrator may terminate prematurely because the kill condition is determined by whether 
+job queues are empty and sometimes they appear empty when jobs are being processed by threads~~
 - Create sdk
+    - Figure out how to pass funcx credentials that will get passed to the funcx client during orchestration
 - Figure out how/when to delete compressed/decompressed files
     - Figure out how to delete any empty directories left behind after clearing out compressed data
         - Might be better to just use a file name to uuid mapping to avoid needing to create the nested directory structures
         - As files are being decompressed, there may be a time where both the compressed and decompressed file exist, so 
         how to account for that needs to be figured out
+- Figure out a way to determine whether an OOM error is caused because a file is unexpectedly large, or if other files are
+unexpectedly large. 
 - ~~Improve locking performance~~
     - ~~Tasks some tasks that require locks take too long and end up blocking other processes. Either switch to queues or
     choose better locations to lock.~~
@@ -107,6 +110,14 @@ job queues are empty and sometimes they appear empty when jobs are being process
     - `Keras` models provide the opportunity to use custom loss functions
     - Determine optimum loss function to balance space vs time tradeoff (models that overpredict incur losses in space 
     but models that underpredict incur losses in processing time as they need to be reprocessed).
+- Determine better "buffer" for prediction
+    - For our models, overprediction is better than underprediction since underprediction may result in OOM errors. To 
+    overpredict rather than underpredict, we currently add a 95th percentile model error to each prediction to provide a 
+    bit of a buffer. However, we currently do so using np.quantile, which assumes that our error follows a uniform distribution.
+    Based on the distribution of compressed file sizes, it might be better to use a normal distribution or an exponential distribution. 
+- Add new method for repredicting when a file is larger than predicted and results in OOM
+    - Larger files should have larger changes and multiple repredictions should result in increasingly larger changes
+    - Might require a method that takes in a Job object rather than just taking in the compressed size
 ## Scheduler (Batcher + Dispatcher)
 - ~~Create `Scheduler` class, which internally manages both a `Batcher` and `Dispatcher`~~
 - ~~Add internal method to `Batcher` to update the amount of available space on a worker~~
@@ -118,16 +129,12 @@ job queues are empty and sometimes they appear empty when jobs are being process
 - ~~Delete jobs from batcher once they've been scheduled into batches~~
 - ~~Write a ton of tests~~
 ## Prefetcher
-- Handle failed transfers
+~~- Handle failed transfers
     - Investigate the difference between "fatal" and "non-fatal" error.
-    - How does Globus clean up failed transfers?
+    - How does Globus clean up failed transfers?~~
 ## Crawlers   
 - ~~Improve file throughput of crawler~~
     - ~~Pushing to SQS takes an awfully long time, perhaps just spinning up more threads will solve the issue.~~
     - ~~It might be better just for the crawler to return a massive metadata dictionary~~
         - ~~Results can just be returned via funcX and will reduce in significantly less overhead from using SQS~~
-- Handle crawl fails
-    - Perhaps add a secondary entry in metadata dictionaries for failed paths
-- Determine if we want to use groups
-    - Groups can be determined post crawl since only file names are used to determine group membership.
-    - There is no real reason to process groups as one unit (if they are even processed at all).
+- Implement grouping once grouping in Xtract is standardized

@@ -35,51 +35,59 @@ class TarPredictor(Predictor):
         return Predictor.get_extension(file_path) == ".tar"
 
     @staticmethod
-    def train_model(data_path=os.path.join(ROOT_DIR, "../data/tar_decompression_results.csv"),
-                    save_path=os.path.join(ROOT_DIR, "predictors/models/tar_model.pkl")) -> None:
-        """Trains and saves a linear regression model. Additionally adds
-        95th percentile error for error correction.
-
-        Parameters
-        ----------
-        data_path : str
-            Path to data to train on.
-        save_path : str
-            Path to save model.
-        """
+    def train_models(data_path=os.path.join(ROOT_DIR, "../data/tar_decompression_results.csv"),
+                     predictor_save_path=os.path.join(ROOT_DIR, "predictors/models/tar_predictor_model.pkl"),
+                     repredictor_save_path=os.path.join(ROOT_DIR, "predictors/models/tar_repredictor_model.pkl")) -> None:
         data_df = pd.read_csv(data_path)
 
-        x = np.array(data_df.compressed_size)
-        y = np.array(data_df.decompressed_size)
+        predictor_x = np.array(data_df.compressed_size)
+        predictor_y = np.array(data_df.decompressed_size)
 
-        X = x.reshape(-1, 1)
+        predictor_X = predictor_x.reshape(-1, 1)
 
-        model = LinearRegression(fit_intercept=False)
-        model.fit(X, y)
+        predictor_model = LinearRegression(fit_intercept=False)
+        predictor_model.fit(predictor_X, predictor_y)
 
-        error = model.predict(X) - y
-        percentile_error = np.quantile(error, 0.95)
+        predictor_y_pred = predictor_model.predict(predictor_X)
+        predictor_error = predictor_y_pred - predictor_y
 
-        model.intercept_ = percentile_error
+        with open(predictor_save_path, "wb") as f:
+            pkl.dump(predictor_model, f)
 
-        with open(save_path, "wb") as f:
-            pkl.dump(model, f)
+        repredictor_x = abs(predictor_y_pred[predictor_error < 0])
+        repredictor_y = abs(predictor_error[predictor_error < 0])
 
-    def load_model(self, load_path=os.path.join(ROOT_DIR, "predictors/models/tar_model.pkl")) -> None:
-        """Loads model to class.
+        repredictor_X = repredictor_x.reshape(-1, 1)
+
+        repredictor_model = LinearRegression(fit_intercept=False)
+        repredictor_model.fit(repredictor_X, repredictor_y)
+
+        with open(repredictor_save_path, "wb") as f:
+            pkl.dump(repredictor_model, f)
+
+    def load_models(self, predictor_model_path=os.path.join(ROOT_DIR, "predictors/models/tar_predictor_model.pkl"),
+                    repredictor_model_path=os.path.join(ROOT_DIR, "predictors/models/tar_repredictor_model.pkl")) -> None:
+        """Loads predictor and repredictor models to class.
 
         Parameters
         ----------
-        load_path : str
+        predictor_model_path : str
             Path to predictor model to load.
+        repredictor_model_path : str
+            Path to repredictor model to load.
         """
-        with open(load_path, "rb") as f:
-            self.model = pkl.load(f)
+        with open(predictor_model_path, "rb") as f:
+            self.predictor_model = pkl.load(f)
 
-        logger.info(f"LOADED {load_path} as model")
+        logger.info(f"Loaded {predictor_model_path} as predictor model")
+
+        with open(repredictor_model_path, "rb") as f:
+            self.repredictor_model = pkl.load(f)
+
+        logger.info(f"Loaded {repredictor_model_path} as repredictor model")
 
     def predict(self, file_path: str, file_size: int) -> int:
-        """Predicts the size of decompressed .tar file.
+        """Predicts the size of decompressed .zip file.
 
         Parameters
         ----------
@@ -91,19 +99,42 @@ class TarPredictor(Predictor):
         Returns
         -------
         int
-            Prediction of decompressed .tar file size.
+            Prediction of decompressed .zip file size.
         """
-        if not self.model:
-            raise ValueError("Model must be loaded before running predictions.")
+        if not self.predictor_model:
+            raise ValueError("Predictor model must be loaded before running predictions.")
 
         x = np.array([file_size]).reshape(1, -1)
 
-        decompressed_size = int(math.ceil(self.model.predict(x)[0]))
+        decompressed_size = int(math.ceil(self.predictor_model.predict(x)[0]))
 
         logger.info(f"{file_path} DECOMPRESSED SIZE: {decompressed_size}B")
 
         return decompressed_size
 
+    def repredict(self, decompressed_size: int) -> int:
+        """Creates new prediction for decompressed size given a previous
+        decompressed size prediction.
+
+        Parameters
+        ----------
+        decompressed_size : int
+            Previous decompressed size prediction to repredict.
+
+        Returns
+        -------
+        New prediction for decompressed size.
+
+        """
+        if not self.repredictor_model:
+            raise ValueError("Repredictor model must be loaded before running predictions.")
+
+        x = np.array([decompressed_size]).reshape(1, -1)
+
+        decompressed_size += int(math.ceil(self.repredictor_model.predict(x)[0]))
+
+        return decompressed_size
+
 
 if __name__ == "__main__":
-    TarPredictor.train_model()
+    TarPredictor.train_models()

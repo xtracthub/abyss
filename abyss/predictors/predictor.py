@@ -8,7 +8,8 @@ from typing import Optional
 class Predictor(ABC):
     def __init__(self):
         """Predictor for decompressed file size."""
-        self.model = None
+        self.predictor_model = None
+        self.repredictor_model = None
 
     @staticmethod
     def get_extension(file_path: str) -> str:
@@ -45,15 +46,23 @@ class Predictor(ABC):
 
     @staticmethod
     @abstractmethod
-    def train_model(data_path: Optional[str], save_path: Optional[str]) -> None:
-        """Trains and saves a predictor model.
+    def train_models(data_path: Optional[str],
+                     predictor_save_path: Optional[str],
+                     repredictor_save_path: Optional[str]) -> None:
+        """Trains and saves a predictor and repredictor model. The
+        predictor model takes the compressed size of a file and attempts
+        to predict the decompressed size of the file. The repredictor
+        model takes an underestimated decompressed size prediction and
+        attempts to repredict its size.
 
         Parameters
         ----------
         data_path : str
             Path to data to train on.
-        save_path : str
-            Path to save model.
+        predictor_save_path : str
+            Path to save predictor model.
+        repredictor_save_path: str
+            Path to save repredictor model.
 
         Returns
         ----------
@@ -62,13 +71,16 @@ class Predictor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_model(self, load_path: Optional[str]) -> None:
+    def load_models(self, predictor_model_path: Optional[str],
+                    repredictor_model_path: Optional[str]) -> None:
         """Loads model to class.
 
         Parameters
         ----------
-        load_path : str
+        predictor_model_path : str
             Path to predictor model to load.
+        repredictor_model_path : str
+            Path to repredictor model to load.
 
         Returns
         ----------
@@ -93,3 +105,21 @@ class Predictor(ABC):
             Prediction of decompressed file size.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def repredict(self, decompressed_size: int) -> int:
+        """Creates new prediction for decompressed size given a previous
+        decompressed size prediction.
+
+        Parameters
+        ----------
+        decompressed_size : int
+            Previous decompressed size prediction to repredict.
+
+        Returns
+        -------
+        New prediction for decompressed size.
+
+        """
+        raise NotImplementedError
+
