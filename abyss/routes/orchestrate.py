@@ -152,10 +152,10 @@ def get_metadata():
         s3_download_file(s3_conn, "xtract-abyss", metadata_file_path, abyss_id)
 
         with open(metadata_file_path) as f:
-             for line in f.readlines():
-                 line_metadata = json.loads(line)
+            for line in f.readlines():
+                line_metadata = json.loads(line)
 
-                 metadata[line_metadata["compressed_path"]] = line_metadata
+                metadata[line_metadata["compressed_path"]] = line_metadata
 
         os.remove(metadata_file_path)
 

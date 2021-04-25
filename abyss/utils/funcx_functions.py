@@ -23,18 +23,19 @@ def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
             job_node.metadata = metadata
             job_node.status = JobStatus.CRAWLING
 
-            # if os.path.isfile(job_node.decompress_path):
-            #     os.remove(job_node.decompress_path)
-            # else:
-            #     shutil.rmtree(job_node.decompress_path)
+            if os.path.isfile(job_node.decompress_path):
+                os.remove(job_node.decompress_path)
+            else:
+                shutil.rmtree(job_node.decompress_path)
 
     return Job.to_dict(job)
 
 
-def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=2):
+def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
+    return "hello world"
     import os
-    import shutil
     import sys
+    import shutil
     sys.path.insert(0, "/")
     from abyss.orchestrator.job import Job, JobStatus
     from abyss.crawlers.local_crawler.local_crawler import LocalCrawler
@@ -43,7 +44,6 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=2):
 
     for job_node in job.bfs_iterator(include_root=True):
         if job_node.status == JobStatus.DECOMPRESSED:
-
             crawler = LocalCrawler(job_node.decompress_path,
                                    grouper_name,
                                    max_crawl_threads=max_crawl_threads)
@@ -118,17 +118,40 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
         if job_node.status == JobStatus.PREFETCHED:
             job_node.status = JobStatus.DECOMPRESSING
 
-        # os.remove(job_node.transfer_path)
+        os.remove(job_node.transfer_path)
 
     return Job.to_dict(job)
+
+def hello_world(x):
+    return "hello world"
 
 
 if __name__ == "__main__":
     import funcx
+    import time
+    from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
     fx = funcx.FuncXClient()
-    print(fx.register_function(run_decompressor, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    print(fx.register_function(run_globus_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    print(fx.register_function(run_local_crawler,container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
+
+    d = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'file_id': '6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': '4c0f8eb8-6363-4f34-a6e0-4fee6d2621f3', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'decompress_path': '/home/tskluzac/ryan/results/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}
+    id = fx.register_function(hello_world,container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff")
+    print(id)
+    crawl_id = fx.run(d, "", endpoint_id="99da411c-92b4-4b44-a86c-dc4abb5cbe0a",
+                                                      function_id=id)
+
+    while True:
+        try:
+            print(fx.get_result(crawl_id))
+            crawl_id = fx.run(d, "",
+                              endpoint_id="99da411c-92b4-4b44-a86c-dc4abb5cbe0a",
+                              function_id=id)
+        except Exception as e:
+            print(e)
+            time.sleep(5)
+
+    # print(fx.register_function(run_local_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
+    # print(fx.register_function(run_decompressor, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
+    # print(fx.register_function(run_globus_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
+
     # x = {'file_path': '/UMich/download/DeepBlueData_pv63g053w/repro_200k_annotations.tar.gz', 'file_id': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'compressed_size': 39726958, 'decompressed_size': 109794247, 'total_size': 317000857, 'worker_id': '86cf9bc8-1792-4f2f-92dd-2967c411d962', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'decompress_path': '/home/tskluzac/ryan/results/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'metadata': {'repro_200k_annotations.tar': {'physical': {'size': 563630080, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar': {'file_path': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar', 'file_id': 'bf1354e9-583b-4570-ac26-cf6ab0a8a505', 'compressed_size': 563630080, 'decompressed_size': 207206610, 'total_size': 770836690, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar', 'decompress_path': '/home/tskluzac/ryan/results/bf1354e9-583b-4570-ac26-cf6ab0a8a505/repro_200k_annotations', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}}}
     # transfer_token = "AgvKvXpGaDNYoNyE0p3p4q8BwnNvBn2WBK5JDkw05nBrawwnpNIzCQ3JBpNEQPK1DgyBB1YlYq82pEi9V9xO4HBvg6"
     # eid = "3f487096-811c-11eb-a933-81bbe47059f4"

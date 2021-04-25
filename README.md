@@ -99,6 +99,16 @@ job queues are empty and sometimes they appear empty when jobs are being process
         - Might be better to just use a file name to uuid mapping to avoid needing to create the nested directory structures
         - As files are being decompressed, there may be a time where both the compressed and decompressed file exist, so 
         how to account for that needs to be figured out
+- Handle decompression/OOM memory errors inside of the funcx functions
+    - If the funcx decompression function raises an error immediately after running into a problem, it will prevent other 
+    files within a Job tree from being processed. Additionally, if we immediately raise an error, the orchestrator has no 
+      way of determining which file caused the issue
+    - My proposed solution is to handle errors within the funcx function and still return the entire Job object to be processed
+    by the orchestrator. 
+        - If the decompressor encounters a decompression error, the compressed/decompressed files will be cleaned/deleted
+    and the job status will be "FAILED" and the decompresor will continue to process the rest of the files
+        - If the decompressor encounters a OOM error, the compressed/decompressed files will be cleaned/deleted and the 
+    job status will be "UNPREDICTED" and the decompressor will continue to process the rest of the files
 - Figure out a way to determine whether an OOM error is caused because a file is unexpectedly large, or if other files are
 unexpectedly large. 
 - ~~Improve locking performance~~

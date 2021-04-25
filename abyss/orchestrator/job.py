@@ -34,7 +34,6 @@ class Job:
                  child_jobs=None, metadata=None):
         self.file_path: str = file_path
         self.file_id: str = file_id
-        # self.file_extension: str = file_extension
         self.compressed_size: int = compressed_size
         self.decompressed_size: int = decompressed_size
         self.total_size: int = total_size
@@ -92,7 +91,7 @@ class Job:
 
         child_jobs = dict()
         if "child_jobs" in job_params:
-            child_job_dicts = job_params.pop("child_jobs")
+            child_job_dicts = job_params["child_jobs"]
 
             for file_path, child_job_dict in child_job_dicts.items():
                 child_jobs[file_path] = (Job.from_dict(child_job_dict))
@@ -122,7 +121,6 @@ class Job:
         job_dict = {
             "file_path": job.file_path,
             "file_id": job.file_id,
-            # "file_extension": job.file_extension,
             "compressed_size": job.compressed_size,
             "decompressed_size": job.decompressed_size,
             "total_size": job.total_size,
