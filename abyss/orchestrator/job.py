@@ -207,9 +207,12 @@ class Job:
         max_total_size = self.compressed_size + self.decompressed_size
         curr_size = self.decompressed_size
 
-        for job in self.bfs_iterator():
-            curr_size += job.decompressed_size
-            job.calculate_total_size()
+        for job_node in self.bfs_iterator():
+            if job_node.status == JobStatus.FAILED:
+                continue
+
+            curr_size += job_node.decompressed_size
+            job_node.calculate_total_size()
 
         self.total_size = max(max_total_size, curr_size)
 
