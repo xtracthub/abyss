@@ -505,6 +505,7 @@ class AbyssOrchestrator:
 
                 try:
                     result = self.funcx_client.get_result(funcx_decompress_id)
+                    print(f"RAW RESULT {result}")
                     job = Job.from_dict(result)
                     print(f"{job.file_path} {Job.to_dict(job)} COMPLETED DECOMPRESS")
                     print(f"{job.file_path} COMPLETED DECOMPRESS")
@@ -521,12 +522,11 @@ class AbyssOrchestrator:
 
                     decompressed_queue.put(job)
                 except Exception as e:
+                    print(f"ERROR for {job.file_path}: {e}")
                     if is_non_critical_funcx_error(e):
                         decompressing_queue.put(job)
                     else:
                         failed_queue.put(job)
-
-                    print(e)
 
                 time.sleep(5)
 
@@ -623,7 +623,7 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     print(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[1:2]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "tar"].sort_values(by=["size_bytes"]).iloc[1:10]
 
     print(sum(filtered_files.size_bytes))
 
@@ -635,8 +635,8 @@ if __name__ == "__main__":
                 "decompress_dir": "/home/tskluzac/ryan/results"}]
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
-    # compressed_files = [{"file_path": "/UMich/download/DeepBlueData_br86b3812/erie_expt2.nc.gz", "compressed_size": 1687459}]
-    transfer_token = 'Agjmv9P3083d8kne0oQ74086nbzXnjJYMN20q2870xGdKx41OBC9C12arY0EQxjqjyn92VawlN7W6MUpxmDvauw42d'
+    compressed_files = [{"file_path": "/UMich/download/DeepBlueData_nz805z76d/SET_D.tar", "compressed_size": 427512232}]
+    transfer_token = 'AgD0qVd6VaDl9oann25eEEpJbYp8GabxVjMemN64YM23QeNmGkiaC30aw1Y7yY5g5OkPV6d5oby5Oacw8wObkS6x8E'
     abyss_id = str(uuid.uuid4())
     print(abyss_id)
 

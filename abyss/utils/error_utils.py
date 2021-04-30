@@ -1,4 +1,4 @@
-from tarfile import TarError, ReadError, CompressionError, StreamError, ExtractError, HeaderError
+from tarfile import TarError, ReadError, CompressionError, StreamError, ExtractError
 from zipfile import BadZipFile, LargeZipFile
 
 
@@ -39,7 +39,7 @@ def is_critical_zip_error(exception: Exception) -> bool:
     """
     critical_decompression_errors = {BadZipFile, LargeZipFile}
 
-    return exception in critical_decompression_errors
+    return exception.__class__ in critical_decompression_errors
 
 
 def is_critical_gzip_error(exception: Exception) -> bool:
@@ -84,9 +84,9 @@ def is_critical_tar_error(exception: Exception) -> bool:
     """
     critical_decompression_errors = {
         TarError, ReadError, CompressionError, StreamError,
-        ExtractError, HeaderError
+        ExtractError
     }
-    return exception in critical_decompression_errors
+    return exception.__class__ in critical_decompression_errors
 
 
 def is_critical_decompression_error(exception: Exception) -> bool:

@@ -3,7 +3,7 @@ import os
 import tarfile
 import zipfile
 
-DECOMPRESSOR_FUNCX_UUID = "a3d8684c-61c4-438e-a290-6f73fd908539"
+DECOMPRESSOR_FUNCX_UUID = "3d1b1188-0f2f-4972-b220-f58de1cf452c"
 
 
 def decompress_zip(file_path: str, extract_dir: str) -> None:

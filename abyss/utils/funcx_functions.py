@@ -26,10 +26,13 @@ def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
             job_node.metadata = metadata
             job_node.status = JobStatus.CRAWLING
 
-            # if os.path.isfile(job_node.decompress_path):
-            #     os.remove(job_node.decompress_path)
-            # else:
-            #     shutil.rmtree(job_node.decompress_path)
+            if os.path.exists(job_node.decompress_path):
+                if os.path.isfile(job_node.decompress_path):
+                    os.remove(job_node.decompress_path)
+                    # logger.error(f"REMOVING FILE {job_node.decompress_path}")
+                else:
+                    shutil.rmtree(job_node.decompress_path)
+                    # logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
 
     return Job.to_dict(job)
 
@@ -65,12 +68,13 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
 
             logger.error(f"DONE CRAWLING {job_node.decompress_path}")
 
-            # if os.path.isfile(job_node.decompress_path):
-            #     os.remove(job_node.decompress_path)
-            #     logger.error(f"REMOVING FILE {job_node.decompress_path}")
-            # else:
-            #     shutil.rmtree(job_node.decompress_path)
-            #     logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
+        if os.path.exists(job_node.decompress_path):
+            if os.path.isfile(job_node.decompress_path):
+                os.remove(job_node.decompress_path)
+                logger.error(f"REMOVING FILE {job_node.decompress_path}")
+            else:
+                shutil.rmtree(job_node.decompress_path)
+                logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
 
     return Job.to_dict(job)
 
@@ -130,9 +134,9 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 if not os.path.exists(os.path.dirname(full_extract_dir)):
                     os.makedirs(os.path.dirname(full_extract_dir))
 
-                full_extract_dir = os.path.dirname(full_extract_dir)
-
                 decompress(file_path, decompress_type, full_extract_dir)
+
+                full_extract_dir = os.path.dirname(full_extract_dir)
 
             job_node.decompress_path = full_extract_dir
 
@@ -151,16 +155,24 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 job_node.status = JobStatus.DECOMPRESSING
 
             logger.error(f"REMOVING {job_node.transfer_path}")
-            # os.remove(job_node.transfer_path)
+            os.remove(job_node.transfer_path)
+
         except Exception as e:
+            logger.error(f"ERROR TYPE {e}")
+            logger.error(f"CAUGHT ERROR", exc_info=True)
             if is_critical_decompression_error(e):
+                logger.error("HANDLED DECOMPRESSION ERROR")
                 if job_node.status == JobStatus.PREFETCHED:
                     job_node.status = JobStatus.FAILED
             elif is_critical_oom_error(e):
                 pass
 
             os.remove(job_node.transfer_path)
-            rmtree(full_extract_dir)
+
+            if os.path.exists(full_extract_dir):
+                rmtree(full_extract_dir)
+
+            break
 
     return Job.to_dict(job)
 
