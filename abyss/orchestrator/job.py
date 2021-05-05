@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from enum import Enum
-from queue import LifoQueue, Queue
+from collections import deque
 
 REQUIRED_JOB_PARAMETERS = [
     ("file_path", str),
@@ -150,19 +150,19 @@ class Job:
         -------
 
         """
-        iteration_queue = Queue()
+        iteration_queue = deque()
 
         if include_root:
-            iteration_queue.put(self)
+            iteration_queue.append(self)
         else:
             for child_job in self.child_jobs.values():
-                iteration_queue.put(child_job)
+                iteration_queue.append(child_job)
 
-        while not iteration_queue.empty():
-            job = iteration_queue.get()
+        while len(iteration_queue):
+            job = iteration_queue.popleft()
 
             for child_job in job.child_jobs.values():
-                iteration_queue.put(child_job)
+                iteration_queue.append(child_job)
 
             yield job
 
@@ -173,21 +173,49 @@ class Job:
         -------
 
         """
-        iteration_queue = LifoQueue()
+        iteration_queue = deque()
 
         if include_root:
-            iteration_queue.put(self)
+            iteration_queue.append(self)
         else:
             for child_job in self.child_jobs.values():
-                iteration_queue.put(child_job)
+                iteration_queue.append(child_job)
 
-        while not iteration_queue.empty():
-            job = iteration_queue.get()
+        while len(iteration_queue):
+            job = iteration_queue.pop()
 
             for child_job in job.child_jobs.values():
-                iteration_queue.put(child_job)
+                iteration_queue.append(child_job)
 
             yield job
+
+    def to_queue(self, order="bfs", include_root=False):
+        """Returns
+
+        Parameters
+        ----------
+        order : str
+            Order fo queue to return. Either "bfs" for breadth-first or
+            "dfs" for depth-first.
+        include_root : bool
+            Whether to include the root node in queue.
+
+        Returns
+        -------
+
+        """
+        queue = deque()
+        
+        if order == "bfs":      
+            for job_node in self.bfs_iterator(include_root=include_root):
+                queue.append(job_node)
+        elif order == "dfs":
+            for job_node in self.dfs_iterator(include_root=include_root):
+                queue.append(job_node)
+        else:
+            raise ValueError(f"{order} is invalid order type")
+        
+        return queue
 
     # This may get changed depending on how/when we decide to delete compressed files
     def calculate_total_size(self):
@@ -294,7 +322,9 @@ if __name__ == "__main__":
     x = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': 'c9a8d41d-2ff7-44f9-a441-36c1c7386c16', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data//UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'decompress_path': '/home/tskluzac/ryan/results/fig01.tar', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'fig01.tar', 'metadata': {'': {'physical': {'size': 102400, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'fig01.tar': {'file_path': 'fig01.tar', 'compressed_size': 102400, 'decompressed_size': 7, 'total_size': 102407, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/fig01.tar', 'decompress_path': '/home/tskluzac/ryan/results/fig01', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CRAWLING', 'metadata': {'root_path': 'fig01', 'metadata': {'fig01/._plot_spectral_albedo.py': {'physical': {'size': 210, 'extension': '.py', 'is_compressed': False}}, 'fig01/._re_164um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_164um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._snicar_spectral_snow_albedo.pdf': {'physical': {'size': 233, 'extension': '.pdf', 'is_compressed': False}}, 'fig01/plot_spectral_albedo.py': {'physical': {'size': 2171, 'extension': '.py', 'is_compressed': False}}, 'fig01/re_164um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_164um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/snicar_spectral_snow_albedo.pdf': {'physical': {'size': 28293, 'extension': '.pdf', 'is_compressed': False}}}}, 'child_jobs': {}}}}
 
     y = Job.from_dict(x)
-    print(y.consolidate_metadata())
+
+    print(y.to_queue(include_root=True))
+    # print(y.consolidate_metadata())
 
 
 

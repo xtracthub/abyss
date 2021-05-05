@@ -1,3 +1,4 @@
+import os
 import funcx
 
 
@@ -79,6 +80,28 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     return Job.to_dict(job)
 
 
+def get_directory_size(start_path):
+    """Gets total size of directory.
+
+    Parameters
+    ----------
+    start_path : str
+        Path to directory to get size of.
+
+    Returns
+    -------
+    dir_size : int
+        Size of start_path.
+    """
+    dir_size = 0
+    for dir_path, dir_names, file_names in os.walk(start_path):
+        for file_name in file_names:
+            file_path = os.path.join(dir_path, file_name)
+            dir_size += os.path.getsize(file_path)
+
+    return dir_size
+
+
 def run_decompressor(job_dict: dict, decompress_dir: str):
     """Iterates through a Job and recursively decompresses files.
 
@@ -110,7 +133,11 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     f_handler.setFormatter(f_format)
     logger.addHandler(f_handler)
 
-    for job_node in job.bfs_iterator(include_root=True):
+    job_nodes = job.to_queue(include_root=True)
+
+    while len(job_nodes):
+        job_node = job_nodes.popleft()
+
         file_path = job_node.transfer_path
         decompress_type = os.path.splitext(job_node.file_path)[1][1:]
         logger.error(f"DECOMPRESSING {file_path}")
@@ -128,15 +155,14 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                                                 job_node.file_id)
                 decompress(file_path, decompress_type, full_extract_dir)
             elif decompress_type == "gz":
-                full_extract_dir = os.path.join(os.path.join(decompress_dir, job_node.file_id),
-                                                os.path.basename(job_node.file_path[:-3]))
+                extract_dir = os.path.join(os.path.join(decompress_dir, job_node.file_id),
+                                           os.path.basename(job_node.file_path[:-3]))
+                full_extract_dir = os.path.dirname(extract_dir)
 
-                if not os.path.exists(os.path.dirname(full_extract_dir)):
-                    os.makedirs(os.path.dirname(full_extract_dir))
+                if not os.path.exists(os.path.dirname(extract_dir)):
+                    os.makedirs(os.path.dirname(extract_dir))
 
-                decompress(file_path, decompress_type, full_extract_dir)
-
-                full_extract_dir = os.path.dirname(full_extract_dir)
+                decompress(file_path, decompress_type, extract_dir)
 
             job_node.decompress_path = full_extract_dir
 
@@ -164,15 +190,30 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 logger.error("HANDLED DECOMPRESSION ERROR")
                 if job_node.status == JobStatus.PREFETCHED:
                     job_node.status = JobStatus.FAILED
+
+                os.remove(job_node.transfer_path)
+
+                if os.path.exists(full_extract_dir):
+                    rmtree(full_extract_dir)
             elif is_critical_oom_error(e):
-                pass
+                decompressed_size = get_directory_size(full_extract_dir)
+                if decompressed_size > job_node.decompressed_size:
+                    os.remove(job_node.transfer_path)
+                    rmtree(full_extract_dir)
 
-            os.remove(job_node.transfer_path)
+                    for child_job in job_node.child_jobs:
+                        job_nodes.remove(child_job)
 
-            if os.path.exists(full_extract_dir):
-                rmtree(full_extract_dir)
+                    job_node.status = JobStatus.UNPREDICTED
+                else:
+                    rmtree(full_extract_dir)
 
-            break
+                    job_nodes.appendleft(job_node)
+            else:
+                os.remove(job_node.transfer_path)
+
+                if os.path.exists(full_extract_dir):
+                    rmtree(full_extract_dir)
 
     return Job.to_dict(job)
 
