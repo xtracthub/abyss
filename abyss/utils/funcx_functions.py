@@ -194,6 +194,7 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 logger.error("HANDLED DECOMPRESSION ERROR")
                 if job_node.status == JobStatus.PREFETCHED:
                     job_node.status = JobStatus.FAILED
+                    job_node.error = str(e)
 
                 os.remove(job_node.transfer_path)
 
@@ -204,17 +205,14 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 decompressed_size = get_directory_size(full_extract_dir)
                 if decompressed_size > job_node.decompressed_size:
                     logger.error("FILE TOO LARGE")
-                    try:
-                        os.remove(job_node.transfer_path)
-                        rmtree(full_extract_dir)
+                    os.remove(job_node.transfer_path)
+                    rmtree(full_extract_dir)
 
-                        for child_job in job_node.child_jobs:
-                            job_nodes.remove(child_job)
+                    for child_job in job_node.child_jobs:
+                        job_nodes.remove(child_job)
 
-                        job_node.status = JobStatus.UNPREDICTED
-                    except Exception as e:
-                        logger.error("CAUGHT ERROR WHEN FIXING")
-                        logger.error(f"CAUGHT ERROR", exc_info=True)
+                    job_node.status = JobStatus.UNPREDICTED
+                    job_node.error = str(e)
 
                 else:
                     logger.error("ATTEMPTING TO REPROCESS")
@@ -222,6 +220,10 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                     job_nodes.appendleft(job_node)
 
             else:
+                if job_node.status == JobStatus.PREFETCHED:
+                    job_node.status = JobStatus.FAILED
+                    job_node.error = str(e)
+
                 os.remove(job_node.transfer_path)
 
                 if os.path.exists(full_extract_dir):

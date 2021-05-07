@@ -20,7 +20,7 @@ from abyss.prefetcher.globus_prefetcher import GlobusPrefetcher, \
 from abyss.schedulers.scheduler import Scheduler
 from abyss.utils.psql_utils import update_table_entry
 from abyss.utils.aws_utils import s3_upload_file
-from abyss.utils.error_utils import is_non_critical_funcx_error, is_critical_decompression_error, is_critical_oom_error
+from abyss.utils.error_utils import is_non_critical_funcx_error
 
 REQUIRED_ORCHESTRATOR_PARAMETERS = [
             ("globus_source_eid", str),
@@ -584,6 +584,7 @@ class AbyssOrchestrator:
             unpredicted_queue = self.job_statuses[JobStatus.UNPREDICTED]
             consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
             succeeded_queue = self.job_statuses[JobStatus.SUCCEEDED]
+            failed_queue = self.job_statuses[JobStatus.FAILED]
 
             while not consolidating_queue.empty():
                 self.thread_statuses["consolidate_results_thread"] = True
@@ -622,6 +623,12 @@ class AbyssOrchestrator:
                     if job_node.status == JobStatus.CONSOLIDATING:
                         job_node.status = JobStatus.SUCCEEDED
 
+                succeeded_queue.put(job)
+
+            while not failed_queue.empty():
+                job = consolidating_queue.get()
+                consolidated_metadata = job.consolidate_metadata()
+                self.abyss_metadata.append(consolidated_metadata)
                 succeeded_queue.put(job)
 
             self.thread_statuses["consolidate_results_thread"] = False
