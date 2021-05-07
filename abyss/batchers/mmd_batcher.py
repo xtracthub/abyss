@@ -48,7 +48,7 @@ class MMDBatcher(Batcher):
         None
         """
         if self._is_failed_job(job):
-            self.failed_jobs.append(job)
+            self.failed_jobs.add(job)
         else:
             self.job_queue.put(job)
 
@@ -68,7 +68,7 @@ class MMDBatcher(Batcher):
         """
         for job in jobs:
             if self._is_failed_job(job):
-                self.failed_jobs.append(job)
+                self.failed_jobs.add(job)
             else:
                 self.job_queue.put(job)
 

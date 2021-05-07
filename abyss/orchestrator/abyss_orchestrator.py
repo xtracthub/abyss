@@ -315,6 +315,7 @@ class AbyssOrchestrator:
         while not self.kill_status:
             predicted_queue = self.job_statuses[JobStatus.PREDICTED]
             scheduled_queue = self.job_statuses[JobStatus.SCHEDULED]
+            failed_queue = self.job_statuses[JobStatus.FAILED]
 
             with self._lock:
                 predicted_list = []
@@ -328,12 +329,19 @@ class AbyssOrchestrator:
                 self.scheduler.schedule_jobs(predicted_list)
 
                 self.worker_queues = self.scheduler.worker_queues
+                failed_jobs = self.scheduler.failed_jobs
 
                 for job in predicted_list:
                     for job_node in job.bfs_iterator(include_root=True):
                         if job_node.status == JobStatus.PREDICTED:
-                            job_node.status = JobStatus.SCHEDULED
-                    scheduled_queue.put(job)
+                            if job_node in failed_jobs:
+                                failed_queue.put(job_node)
+                                job_node.status = JobStatus.FAILED
+                            else:
+                                job_node.status = JobStatus.SCHEDULED
+
+                    if job_node not in failed_jobs:
+                        scheduled_queue.put(job)
                 self.thread_statuses["scheduler_thread"] = False
 
     def _thread_prefetch(self) -> None:
@@ -488,13 +496,14 @@ class AbyssOrchestrator:
         -------
         None
         """
-        while not self.kill_status:
-            decompressing_queue = self.job_statuses[JobStatus.DECOMPRESSING]
-            decompressed_queue = self.job_statuses[JobStatus.DECOMPRESSED]
-            crawling_queue = self.job_statuses[JobStatus.CRAWLING]
-            consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
-            failed_queue = self.job_statuses[JobStatus.FAILED]
+        unpredicted_queue = self.job_statuses[JobStatus.UNPREDICTED]
+        decompressing_queue = self.job_statuses[JobStatus.DECOMPRESSING]
+        decompressed_queue = self.job_statuses[JobStatus.DECOMPRESSED]
+        crawling_queue = self.job_statuses[JobStatus.CRAWLING]
+        consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
+        failed_queue = self.job_statuses[JobStatus.FAILED]
 
+        while not self.kill_status:
             for _ in range(decompressing_queue.qsize()):
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = decompressing_queue.get()
@@ -512,6 +521,10 @@ class AbyssOrchestrator:
 
                     if job.status == JobStatus.FAILED:
                         failed_queue.put(job)
+                        continue
+                    if job.status == JobStatus.UNPREDICTED:
+                        print("POGGERS IT WORKS")
+                        unpredicted_queue.put(job)
                         continue
 
                     for job_node in job.bfs_iterator(include_root=True):
@@ -623,20 +636,20 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     print(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "tar"].sort_values(by=["size_bytes"]).iloc[1:10]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[0:1]
 
     print(sum(filtered_files.size_bytes))
 
 
     workers = [{"globus_eid": "f4e2f5a4-a186-11eb-8a91-d70d98a40c8d",
                 "funcx_eid": "66dab10e-d323-41e1-8f4a-4bfc3204357e",
-                "max_available_space": 30*10**9,
+                "max_available_space": 3*10**9,
                 "transfer_dir": "/home/tskluzac/ryan/deep_blue_data",
                 "decompress_dir": "/home/tskluzac/ryan/results"}]
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
-    compressed_files = [{"file_path": "/UMich/download/DeepBlueData_nz805z76d/SET_D.tar", "compressed_size": 427512232}]
-    transfer_token = 'AgD0qVd6VaDl9oann25eEEpJbYp8GabxVjMemN64YM23QeNmGkiaC30aw1Y7yY5g5OkPV6d5oby5Oacw8wObkS6x8E'
+    compressed_files = [{"file_path": "/UMich/download/DeepBlueData_gt54kn05f/NAmerica_current_30arcsec_generic_set1.zip", "compressed_size": 290392819}]
+    transfer_token = 'Ag7BKmnrkbEmm57N8O1d67pp3zr7J2xxBb55d7g9xx6140MBD5IWClpp0vEND8aE6wnJkE9Ep398lBiza49vbCMzg8'
     abyss_id = str(uuid.uuid4())
     print(abyss_id)
 

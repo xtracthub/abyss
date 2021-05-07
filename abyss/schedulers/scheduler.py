@@ -30,6 +30,7 @@ class Scheduler:
         self._dispatcher = get_dispatcher(dispatcher_name)(workers)
 
         self.worker_queues = self._dispatcher.worker_queues
+        self.failed_jobs = self._batcher.failed_jobs
 
         for worker in workers:
             self._worker_dict[worker.worker_id] = worker
@@ -92,4 +93,5 @@ class Scheduler:
         """
         self._dispatcher.dispatch_batch(self._batcher.worker_batches)
         self._worker_queues = self._dispatcher.worker_queues
+        self.failed_jobs = self._batcher.failed_jobs
 

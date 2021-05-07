@@ -69,7 +69,7 @@ class KnapsackBatcher(Batcher):
         None
         """
         if self._is_failed_job(job):
-            self.failed_jobs.append(job)
+            self.failed_jobs.add(job)
         else:
             self.jobs.append(job)
 
@@ -89,7 +89,7 @@ class KnapsackBatcher(Batcher):
         """
         for job in jobs:
             if self._is_failed_job(job):
-                self.failed_jobs.append(job)
+                self.failed_jobs.add(job)
             else:
                 self.jobs.append(job)
 

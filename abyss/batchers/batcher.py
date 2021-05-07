@@ -29,7 +29,7 @@ class Batcher(ABC):
         self.jobs = jobs
         self.worker_batches = dict()
         self.worker_dict = dict()
-        self.failed_jobs = []
+        self.failed_jobs = set()
 
         for worker in workers:
             self.worker_batches[worker.worker_id] = []

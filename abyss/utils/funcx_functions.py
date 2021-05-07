@@ -124,6 +124,7 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     from abyss.orchestrator.job import Job, JobStatus
     from abyss.decompressors import decompress
     from abyss.utils.error_utils import is_critical_oom_error, is_critical_decompression_error
+    from abyss.utils.funcx_functions import get_directory_size
     job = Job.from_dict(job_dict)
 
     logger = logging.getLogger(__name__)
@@ -164,6 +165,9 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
 
                 decompress(file_path, decompress_type, extract_dir)
 
+            if get_directory_size(decompress_dir) > 50:
+                raise OSError(28, "No space left on device")
+
             job_node.decompress_path = full_extract_dir
 
             logger.error(f"DECOMPRESSED {file_path} to {full_extract_dir}")
@@ -196,19 +200,27 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 if os.path.exists(full_extract_dir):
                     rmtree(full_extract_dir)
             elif is_critical_oom_error(e):
+                logger.error("PROCESSING OOM ERROR")
                 decompressed_size = get_directory_size(full_extract_dir)
                 if decompressed_size > job_node.decompressed_size:
-                    os.remove(job_node.transfer_path)
-                    rmtree(full_extract_dir)
+                    logger.error("FILE TOO LARGE")
+                    try:
+                        os.remove(job_node.transfer_path)
+                        rmtree(full_extract_dir)
 
-                    for child_job in job_node.child_jobs:
-                        job_nodes.remove(child_job)
+                        for child_job in job_node.child_jobs:
+                            job_nodes.remove(child_job)
 
-                    job_node.status = JobStatus.UNPREDICTED
+                        job_node.status = JobStatus.UNPREDICTED
+                    except Exception as e:
+                        logger.error("CAUGHT ERROR WHEN FIXING")
+                        logger.error(f"CAUGHT ERROR", exc_info=True)
+
                 else:
+                    logger.error("ATTEMPTING TO REPROCESS")
                     rmtree(full_extract_dir)
-
                     job_nodes.appendleft(job_node)
+
             else:
                 os.remove(job_node.transfer_path)
 

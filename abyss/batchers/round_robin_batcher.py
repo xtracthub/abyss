@@ -42,7 +42,7 @@ class RoundRobinBatcher(Batcher):
         None
         """
         if self._is_failed_job(job):
-            self.failed_jobs.append(job)
+            self.failed_jobs.add(job)
         else:
             self.job_queue.put(job)
 
@@ -62,7 +62,7 @@ class RoundRobinBatcher(Batcher):
         """
         for job in jobs:
             if self._is_failed_job(job):
-                self.failed_jobs.append(job)
+                self.failed_jobs.add(job)
             else:
                 self.job_queue.put(job)
 
