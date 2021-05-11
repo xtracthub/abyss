@@ -247,6 +247,15 @@ class AbyssOrchestrator:
             self._update_psql_entry()
             print(f"ELAPSED: {time.time() - t0}")
 
+        print("Hello?")
+        print(self.thread_statuses)
+        table_entry = dict()
+
+        for job_status, job_queue in self.job_statuses.items():
+            table_entry[job_status.value.lower()] = job_queue.qsize()
+
+        print(table_entry)
+
         self._predictor_thread.join()
         self._scheduler_thread.join()
         self._prefetcher_thread.join()
@@ -256,15 +265,20 @@ class AbyssOrchestrator:
         self._funcx_poll_thread.join()
         self._consolidate_results_thread.join()
 
-        metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
+        print("DONE JOINING")
 
-        with open(metadata_file_path, "w") as f:
-            f.writelines([json.dumps(metadata) for metadata in self.abyss_metadata])
+        for metadata in self.abyss_metadata:
+            print(metadata)
+
+        # metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
+        #
+        # with open(metadata_file_path, "w") as f:
+        #     f.writelines([json.dumps(metadata) for metadata in self.abyss_metadata])
 
         # s3_upload_file(self.s3_conn, "xtract-abyss", metadata_file_path,
         #                f"{self.abyss_id}.txt")
 
-        os.remove(metadata_file_path)
+        # os.remove(metadata_file_path)
 
     def _predict_decompressed_size(self) -> None:
         """Runs decompression size predictions on all files in
@@ -626,7 +640,8 @@ class AbyssOrchestrator:
                 succeeded_queue.put(job)
 
             while not failed_queue.empty():
-                job = consolidating_queue.get()
+                print("STUCK")
+                job = failed_queue.get()
                 consolidated_metadata = job.consolidate_metadata()
                 self.abyss_metadata.append(consolidated_metadata)
                 succeeded_queue.put(job)
@@ -643,7 +658,7 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     print(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[0:1]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[1:5]
 
     print(sum(filtered_files.size_bytes))
 
@@ -656,7 +671,7 @@ if __name__ == "__main__":
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
     compressed_files = [{"file_path": "/UMich/download/DeepBlueData_gt54kn05f/NAmerica_current_30arcsec_generic_set1.zip", "compressed_size": 290392819}]
-    transfer_token = 'Ag7BKmnrkbEmm57N8O1d67pp3zr7J2xxBb55d7g9xx6140MBD5IWClpp0vEND8aE6wnJkE9Ep398lBiza49vbCMzg8'
+    transfer_token = 'AgWkVX5v1OWbqDXrbgyz4qvlElmoEW8GXzEkyeqaXmp8m28j0bUgCWgO1NJ2vmNq4pjzEmylp9Pq90U421bPqhmajG'
     abyss_id = str(uuid.uuid4())
     print(abyss_id)
 
