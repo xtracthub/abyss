@@ -1,9 +1,17 @@
 from typing import Dict, List
+import logging
 
 from abyss.batchers import get_batcher
 from abyss.dispatchers import get_dispatcher
 from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
+
+logger = logging.getLogger(__name__)
+f_handler = logging.FileHandler('/Users/ryan/Documents/CS/abyss/abyss/orchestrator/file.log')
+f_handler.setLevel(logging.ERROR)
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+f_handler.setFormatter(f_format)
+logger.addHandler(f_handler)
 
 
 class Scheduler:
@@ -80,7 +88,15 @@ class Scheduler:
         -------
         None
         """
+        for j in jobs:
+            logger.error(f"{j.file_path} has been submitted to scheduler")
+
         self._batcher.batch_jobs(jobs)
+
+        for worker_queue in self._batcher.worker_batches.values():
+            for i in range(len(worker_queue)):
+                logger.error(f"{worker_queue[i].file_path} has been batched")
+
         self._schedule()
 
     def _schedule(self) -> None:

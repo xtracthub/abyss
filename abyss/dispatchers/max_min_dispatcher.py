@@ -81,7 +81,7 @@ class MaxMinDispatcher(Dispatcher):
                 small_job_sizes = 0
                 while worker_deque and small_job_sizes < max_job.decompressed_size:
                     min_job = worker_deque.popleft()
-                    worker_queue.put(min_job)
+                    worker_queue.append(min_job)
 
                     small_job_sizes += min_job.decompressed_size
 

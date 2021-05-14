@@ -1,10 +1,19 @@
 import math
-from queue import Queue
+from collections import deque
 from typing import List
+import logging
 
 from abyss.batchers.batcher import Batcher
 from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
+
+
+logger = logging.getLogger(__name__)
+f_handler = logging.FileHandler('/Users/ryan/Documents/CS/abyss/abyss/orchestrator/file.log')
+f_handler.setLevel(logging.ERROR)
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+f_handler.setFormatter(f_format)
+logger.addHandler(f_handler)
 
 
 class MMDBatcher(Batcher):
@@ -24,12 +33,12 @@ class MMDBatcher(Batcher):
         """
         super().__init__(workers, jobs)
 
-        self.job_queue = Queue()
+        self.job_queue = deque()
         self.num_workers = len(self.workers)
         self.curr_idx = 0
 
         for job in self.jobs:
-            self.job_queue.put(job)
+            self.job_queue.append(job)
 
         self.jobs = []
 
@@ -50,7 +59,7 @@ class MMDBatcher(Batcher):
         if self._is_failed_job(job):
             self.failed_jobs.add(job)
         else:
-            self.job_queue.put(job)
+            self.job_queue.append(job)
 
         self._batch()
 
@@ -66,11 +75,16 @@ class MMDBatcher(Batcher):
         -------
         None
         """
+        for j in jobs:
+            logger.error(f"{j.file_path} has been submitted to batcher")
+
         for job in jobs:
             if self._is_failed_job(job):
+                logger.error(f"{job.file_path} failed to be batched")
                 self.failed_jobs.add(job)
             else:
-                self.job_queue.put(job)
+                logger.error(f"{job.file_path} waiting to be batched")
+                self.job_queue.append(job)
 
         self._batch()
 
@@ -92,8 +106,8 @@ class MMDBatcher(Batcher):
                                 job_batch_size,
                                 available_space])
 
-        for _ in range(self.job_queue.qsize()):
-            job = self.job_queue.get()
+        for _ in range(len(self.job_queue)):
+            job = self.job_queue.popleft()
             total_size = job.total_size
             worker_info.sort(key=lambda x: (x[1] + total_size)/x[2] if x[2] > 0 else math.inf)
 
@@ -112,4 +126,4 @@ class MMDBatcher(Batcher):
                     worker_info_tuple[1] += total_size
                     break
                 elif idx == len(self.workers) - 1:
-                    self.job_queue.put(job)
+                    self.job_queue.append(job)

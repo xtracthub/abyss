@@ -52,6 +52,6 @@ class FIFODispatcher(Dispatcher):
             worker_queue = self.worker_queues[worker_id]
 
             for job in worker_batch:
-                worker_queue.put(job)
+                worker_queue.append(job)
 
             self.worker_batches[worker_id] = []

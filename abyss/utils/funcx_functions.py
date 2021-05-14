@@ -165,8 +165,8 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
 
                 decompress(file_path, decompress_type, extract_dir)
 
-            if get_directory_size(decompress_dir) > 50:
-                raise OSError(28, "No space left on device")
+            # if get_directory_size(decompress_dir) > 50:
+            #     raise OSError(28, "No space left on device")
 
             job_node.decompress_path = full_extract_dir
 

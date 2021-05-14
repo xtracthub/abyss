@@ -1,4 +1,4 @@
-from queue import Queue
+from collections import deque
 from typing import List
 
 from abyss.batchers.batcher import Batcher
@@ -19,12 +19,12 @@ class RoundRobinBatcher(Batcher):
         """
         super().__init__(workers, jobs)
 
-        self.job_queue = Queue()
+        self.job_queue = deque()
         self.num_workers = len(self.workers)
         self.curr_idx = 0
 
         for job in self.jobs:
-            self.job_queue.put(job)
+            self.job_queue.append(job)
 
         self.jobs = []
         self._batch()
@@ -44,7 +44,7 @@ class RoundRobinBatcher(Batcher):
         if self._is_failed_job(job):
             self.failed_jobs.add(job)
         else:
-            self.job_queue.put(job)
+            self.job_queue.append(job)
 
         self._batch()
 
@@ -64,7 +64,7 @@ class RoundRobinBatcher(Batcher):
             if self._is_failed_job(job):
                 self.failed_jobs.add(job)
             else:
-                self.job_queue.put(job)
+                self.job_queue.append(job)
 
         self._batch()
 
@@ -77,8 +77,8 @@ class RoundRobinBatcher(Batcher):
         -------
         None
         """
-        for _ in range(self.job_queue.qsize()):
-            job = self.job_queue.get()
+        for _ in range(len(self.job_queue)):
+            job = self.job_queue.popleft()
             total_size = job.total_size
 
             worker_idx = self.curr_idx
@@ -90,7 +90,7 @@ class RoundRobinBatcher(Batcher):
                     worker.curr_available_space -= total_size
                     break
                 elif idx == self.num_workers - 1:
-                    self.job_queue.put(job)
+                    self.job_queue.append(job)
 
                 worker_idx = (worker_idx + 1) % self.num_workers
 
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         print(batch)
 
     queued = []
-    while not(batcher.job_queue.empty()):
-        queued.append(batcher.job_queue.get())
+    while len(batcher.job_queue):
+        queued.append(batcher.job_queue.popleft())
     print(f"Jobs in queue: {queued}")
 
 

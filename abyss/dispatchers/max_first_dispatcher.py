@@ -54,6 +54,6 @@ class MaxFirstDispatcher(Dispatcher):
                               key=(lambda x: x.decompressed_size))
 
             for job in worker_batch:
-                worker_queue.put(job)
+                worker_queue.append(job)
 
             self.worker_batches[worker_id] = []
