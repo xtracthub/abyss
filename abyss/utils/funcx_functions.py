@@ -1,6 +1,11 @@
 import os
 import funcx
 
+DECOMPRESSOR_FUNCX_UUID = "76cc14f7-8be8-4c0f-9489-b95eae880167"
+GLOBUS_CRAWLER_FUNCX_UUID = "e6b0620f-65e7-4793-8919-97835d68be84"
+LOCAL_CRAWLER_FUNCX_UUID = "a35e75b7-33d3-449c-b889-ea613fe3ecba"
+PROCESS_HEADER_FUNCX_UUID = "228b94da-d4c6-4145-a053-9b0598b1ab28"
+
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
                 grouper_name: str, max_crawl_threads=2):
@@ -232,11 +237,73 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     return Job.to_dict(job)
 
 
+def process_headers(file_path: str) -> int:
+    """Reads .zip and .tar headers to determine the decompressed size of
+    the files.
+
+    Parameters
+    ----------
+    file_path : str
+        File path to .tar or .zip file.
+
+    Returns
+    -------
+    decompressed_size : int
+        Decompressed size of file_path.
+    """
+    import zipfile
+    import tarfile
+
+    decompressed_size = 0
+
+    if file_path.endswith(".zip"):
+        with zipfile.ZipFile(file_path, "r") as zip_f:
+            for zip_info in zip_f.infolist():
+                decompressed_size += zip_info.file_size
+    elif file_path.endswith(".tar"):
+        with tarfile.open(file_path, "r:") as tar_f:
+            for tar_info in tar_f.getmembers():
+                decompressed_size += tar_info.size
+
+    return decompressed_size
+
+
+def process_job_headers(job_dict: dict) -> dict:
+    """Takes a job object and reads the file header and determines the
+    decompressed size of the job.
+
+    Parameters
+    ----------
+    job_dict : dict
+        Job dictionary.
+
+    Returns
+    -------
+    dict
+        Job dictionary containing the decompressed size.
+    """
+    from abyss.orchestrator.job import Job, JobStatus
+
+    job = Job.from_dict(job_dict)
+
+    if job.status != JobStatus.PROCESSING_HEADERS:
+        raise ValueError(f"Job {job.file_path} status is not PROCESSING_HEADERS")
+    elif not(job.file_path.endswith(".zip") or job.file_path.endswith(".tar")):
+        raise ValueError(f"Can not process headers of {job.file_path}")
+
+    decompressed_size = process_headers(job.file_path)
+
+    job.decompressed_size = decompressed_size
+
+    return Job.to_dict(job)
+
+
 def register_funcs():
     fx = funcx.FuncXClient()
     print(f"LOCAL CRAWLER ID: {fx.register_function(run_local_crawler, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
     print(f"GLOBUS CRAWLER ID: {fx.register_function(run_globus_crawler, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
     print(f"DECOMPRESSOR ID: {fx.register_function(run_decompressor, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
+    print(f"PROCESS HEADER ID: {fx.register_function(process_job_headers, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
 
 def hello_world(x):
     import logging

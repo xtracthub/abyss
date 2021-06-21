@@ -11,9 +11,6 @@ from abyss.crawlers.groupers import get_grouper
 from abyss.decompressors import is_compressed
 
 
-GLOBUS_CRAWLER_FUNCX_UUID = "e6b0620f-65e7-4793-8919-97835d68be84"
-
-
 class GlobusCrawler(Crawler):
     def __init__(self, transfer_token: str,
                  globus_eid: str, base_path: str, grouper_name: str,

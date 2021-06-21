@@ -8,9 +8,6 @@ from abyss.crawlers.groupers import get_grouper
 from abyss.decompressors import is_compressed
 
 
-LOCAL_CRAWLER_FUNCX_UUID = "a35e75b7-33d3-449c-b889-ea613fe3ecba"
-
-
 class LocalCrawler(Crawler):
     def __init__(self, base_path: str, grouper_name: str,
                  max_crawl_threads=2):

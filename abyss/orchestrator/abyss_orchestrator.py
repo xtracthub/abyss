@@ -1,4 +1,4 @@
-import json
+import logging
 import logging
 import threading
 import uuid
@@ -7,10 +7,6 @@ from typing import Dict, List
 
 from funcx import FuncXClient
 
-from abyss.crawlers.globus_crawler.globus_crawler import GLOBUS_CRAWLER_FUNCX_UUID
-from abyss.crawlers.local_crawler.local_crawler import \
-    LOCAL_CRAWLER_FUNCX_UUID
-from abyss.decompressors import DECOMPRESSOR_FUNCX_UUID
 from abyss.orchestrator.job import Job, JobStatus
 from abyss.orchestrator.worker import Worker
 from abyss.predictors import FILE_PREDICTOR_MAPPING
@@ -18,9 +14,10 @@ from abyss.predictors.predictor import Predictor
 from abyss.prefetcher.globus_prefetcher import GlobusPrefetcher, \
     PrefetcherStatuses
 from abyss.schedulers.scheduler import Scheduler
-from abyss.utils.psql_utils import update_table_entry
-from abyss.utils.aws_utils import s3_upload_file
 from abyss.utils.error_utils import is_non_critical_funcx_error
+from abyss.utils.funcx_functions import LOCAL_CRAWLER_FUNCX_UUID, \
+    DECOMPRESSOR_FUNCX_UUID
+from abyss.utils.psql_utils import update_table_entry
 
 REQUIRED_ORCHESTRATOR_PARAMETERS = [
             ("globus_source_eid", str),
@@ -308,10 +305,7 @@ class AbyssOrchestrator:
                     job.status = JobStatus.UNPREDICTED_PREDICT
                     unpredicted_predict_queue.put(job)
                 elif self.prediction_mode == "header":
-                    if job.file_path.endswith(".gz") and job.decompressed_size < 2 ** 32:
-                        job.status = JobStatus.UNPREDICTED_SCHEDULE
-                        unpredicted_schedule_queue.put(job)
-                    elif job.file_path.endswith(".zip") or job.file_path.endswith(".tar"):
+                    if job.file_path.endswith(".zip") or job.file_path.endswith(".tar"):
                         job.status = JobStatus.UNPREDICTED_SCHEDULE
                         unpredicted_schedule_queue.put(job)
                 else:
@@ -512,9 +506,43 @@ class AbyssOrchestrator:
             self.thread_statuses["prefetcher_poll_thread"] = False
             time.sleep(5)
 
+    def _thread_funcx_process_headers(self) -> None:
+        """Thread function to submit header processing tasks to funcX.
+
+        Returns
+        -------
+        None
+        """
+        while not self.kill_status:
+            unpredicted_prefetched_queue = self.job_statuses[JobStatus.UNPREDICTED_PREFETCHED]
+            processing_headers_queue = self.job_statuses[JobStatus.PROCESSING_HEADERS]
+
+            while not unpredicted_prefetched_queue.empty():
+                self.thread_statuses["funcx_processing_headers_thread"] = True
+                job = unpredicted_prefetched_queue.get()
+                logger.error(f"{job.file_path} PROCESSING HEADERS")
+                job_dict = Job.to_dict(job)
+                worker_id = job.worker_id
+
+                worker = self.worker_dict[worker_id]
+                funcx_task_id = self.funcx_client.run(job_dict,
+                                                      worker.transfer_dir,
+                                                      endpoint_id=worker.funcx_eid,
+                                                      function_id="")
+                for job_node in job.bfs_iterator(include_root=True):
+                    job_node.funcx_decompress_id = funcx_task_id
+                    if job_node.status == JobStatus.PREFETCHED:
+                        job_node.status = JobStatus.DECOMPRESSING
+                processing_headers_queue.put(job)
+
+                time.sleep(1)
+
+            self.thread_statuses["funcx_processing_headers_thread"] = False
+
     # TODO: Consolidate this and _thread_funcx_crawl into one function
     def _thread_funcx_decompress(self) -> None:
-        """Thread function to submit decompression functions to funcX.
+        """Thread function to submit decompression tasks to funcX.
+
         Returns
         -------
         None
@@ -546,7 +574,7 @@ class AbyssOrchestrator:
             self.thread_statuses["funcx_decompress_thread"] = False
 
     def _thread_funcx_crawl(self) -> None:
-        """Thread function to submit crawl functions to funcX.
+        """Thread function to submit crawl tasks to funcX.
         Returns
         -------
         None
@@ -590,10 +618,37 @@ class AbyssOrchestrator:
         decompressing_queue = self.job_statuses[JobStatus.DECOMPRESSING]
         decompressed_queue = self.job_statuses[JobStatus.DECOMPRESSED]
         crawling_queue = self.job_statuses[JobStatus.CRAWLING]
+        processing_headers_queue = self.job_statuses[JobStatus.PROCESSING_HEADERS]
+        predicted_queue = self.job_statuses[JobStatus.PREDICTED]
         consolidating_queue = self.job_statuses[JobStatus.CONSOLIDATING]
         failed_queue = self.job_statuses[JobStatus.FAILED]
 
         while not self.kill_status:
+            for _ in range(processing_headers_queue.qsize()):
+                self.thread_statuses["funcx_poll_thread"] = True
+                job = processing_headers_queue.get()
+                logger.error(f"{job.file_path} POLLING HEADER PROCESSING")
+                funcx_crawl_id = job.funcx_crawl_id
+                worker = self.worker_dict[job.worker_id]
+                try:
+                    result = self.funcx_client.get_result(funcx_crawl_id)
+                    job = Job.from_dict(result)
+                    logger.error(f"{job.file_path} COMPLETED HEADER PROCESSING")
+
+                    for job_node in job.bfs_iterator(include_root=True):
+                        if job_node.status == JobStatus.PROCESSING_HEADERS:
+                            job_node.status = JobStatus.PREDICTED
+
+                    worker.curr_available_space += job.compressed_size
+                    consolidating_queue.put(job)
+                except Exception as e:
+                    if is_non_critical_funcx_error(e):
+                        crawling_queue.put(job)
+                    else:
+                        failed_queue.put(job)
+
+                time.sleep(5)
+
             for _ in range(decompressing_queue.qsize()):
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = decompressing_queue.get()
