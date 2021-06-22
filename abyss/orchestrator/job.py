@@ -36,8 +36,8 @@ class Job:
                  decompressed_size=None, error=None, total_size=None,
                  worker_id=None, transfer_path=None,
                  decompress_path=None, funcx_decompress_id=None,
-                 funcx_crawl_id=None, status=None,
-                 child_jobs=None, metadata=None):
+                 funcx_crawl_id=None, funcx_process_headers_id=None,
+                 status=None, child_jobs=None, metadata=None):
         self.file_path: str = file_path
         self.file_id: str = file_id
         self.compressed_size: int = compressed_size
@@ -49,6 +49,7 @@ class Job:
         self.decompress_path: str = decompress_path
         self.funcx_decompress_id: str = funcx_decompress_id
         self.funcx_crawl_id: str = funcx_crawl_id
+        self.funcx_process_headers_id: str = funcx_process_headers_id
         self.status: JobStatus = status
 
         self.child_jobs: dict = child_jobs if child_jobs else dict()
@@ -136,6 +137,7 @@ class Job:
             "decompress_path": job.decompress_path,
             "funcx_decompress_id": job.funcx_decompress_id,
             "funcx_crawl_id": job.funcx_crawl_id,
+            "funcx_process_headers_id": job.funcx_process_headers_id,
             "status": job.status.value,
             "metadata": job.metadata,
             "error": job.error

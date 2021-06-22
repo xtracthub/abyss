@@ -16,7 +16,7 @@ from abyss.prefetcher.globus_prefetcher import GlobusPrefetcher, \
 from abyss.schedulers.scheduler import Scheduler
 from abyss.utils.error_utils import is_non_critical_funcx_error
 from abyss.utils.funcx_functions import LOCAL_CRAWLER_FUNCX_UUID, \
-    DECOMPRESSOR_FUNCX_UUID
+    DECOMPRESSOR_FUNCX_UUID, PROCESS_HEADER_FUNCX_UUID
 from abyss.utils.psql_utils import update_table_entry
 
 REQUIRED_ORCHESTRATOR_PARAMETERS = [
@@ -298,10 +298,12 @@ class AbyssOrchestrator:
             unpredicted_schedule_queue = self.job_statuses[JobStatus.UNPREDICTED_SCHEDULE]
 
             while not unpredicted_queue.empty():
-                # set thread status to true
+                self.thread_statuses["unpredicted_preprocessing_thread"] = True
                 job = unpredicted_queue.get()
 
-                if self.prediction_mode == "ml":
+                # If a file is recursively compressed we will use machine learning to predict the file size.
+                # We only use file headers if the compressed file is directly stored on our storage source.
+                if self.prediction_mode == "ml" or job.status != JobStatus.UNPREDICTED:
                     job.status = JobStatus.UNPREDICTED_PREDICT
                     unpredicted_predict_queue.put(job)
                 elif self.prediction_mode == "header":
@@ -311,7 +313,7 @@ class AbyssOrchestrator:
                 else:
                     raise ValueError(f"Unknown prediction mode \"{self.prediction_mode}\"")
 
-                # set thread status to false
+                self.thread_statuses["unpredicted_preprocessing_thread"] = False
 
     def _predict_decompressed_size(self) -> None:
         """Runs decompression size predictions on all files in
@@ -332,7 +334,7 @@ class AbyssOrchestrator:
                 logger.error(f"{job.file_path} PREDICTING")
 
                 for job_node in job.bfs_iterator(include_root=True):
-                    if job_node.status == JobStatus.UNPREDICTED:
+                    if job_node.status in [JobStatus.UNPREDICTED, JobStatus.UNPREDICTED_PREDICT]:
                         file_path = job_node.file_path
                         file_extension = Predictor.get_extension(file_path)
 
@@ -378,7 +380,7 @@ class AbyssOrchestrator:
                 while not unpredicted_schedule_queue.empty():
                     self.thread_statuses["scheduler_thread"] = True
                     job = unpredicted_schedule_queue.get()
-                    logger.error(f"{job.file_path} SCHEDULING")
+                    logger.error(f"{job.file_path} UNPREDICTED SCHEDULING")
                     job.calculate_total_size()
                     predicted_list.append(job)
 
@@ -528,11 +530,11 @@ class AbyssOrchestrator:
                 funcx_task_id = self.funcx_client.run(job_dict,
                                                       worker.transfer_dir,
                                                       endpoint_id=worker.funcx_eid,
-                                                      function_id="")
-                for job_node in job.bfs_iterator(include_root=True):
-                    job_node.funcx_decompress_id = funcx_task_id
-                    if job_node.status == JobStatus.PREFETCHED:
-                        job_node.status = JobStatus.DECOMPRESSING
+                                                      function_id=PROCESS_HEADER_FUNCX_UUID)
+
+                job.funcx_process_headers_id = funcx_task_id
+                job.status = JobStatus.PROCESSING_HEADERS
+
                 processing_headers_queue.put(job)
 
                 time.sleep(1)
@@ -628,22 +630,20 @@ class AbyssOrchestrator:
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = processing_headers_queue.get()
                 logger.error(f"{job.file_path} POLLING HEADER PROCESSING")
-                funcx_crawl_id = job.funcx_crawl_id
+                funcx_process_headers_id = job.funcx_process_headers_id
                 worker = self.worker_dict[job.worker_id]
                 try:
-                    result = self.funcx_client.get_result(funcx_crawl_id)
+                    result = self.funcx_client.get_result(funcx_process_headers_id)
                     job = Job.from_dict(result)
                     logger.error(f"{job.file_path} COMPLETED HEADER PROCESSING")
 
-                    for job_node in job.bfs_iterator(include_root=True):
-                        if job_node.status == JobStatus.PROCESSING_HEADERS:
-                            job_node.status = JobStatus.PREDICTED
+                    job.status = JobStatus.PREDICTED
 
                     worker.curr_available_space += job.compressed_size
                     consolidating_queue.put(job)
                 except Exception as e:
                     if is_non_critical_funcx_error(e):
-                        crawling_queue.put(job)
+                        processing_headers_queue.put(job)
                     else:
                         failed_queue.put(job)
 
