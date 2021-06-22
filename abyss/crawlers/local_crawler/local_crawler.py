@@ -118,13 +118,7 @@ class LocalCrawler(Crawler):
 
                         file_metadata["physical"]["decompressed_size"] = decompressed_size
 
-                    dir_file_metadata[relative_path] = {
-                        "physical": {
-                            "size": file_size,
-                            "extension": extension,
-                            "is_compressed": is_compressed(full_path)
-                        }
-                    }
+                    dir_file_metadata[relative_path] = file_metadata
                 elif os.path.isdir(full_path):
                     self.crawl_queue.put(full_path)
 
@@ -133,6 +127,6 @@ class LocalCrawler(Crawler):
 
 
 if __name__ == "__main__":
-    crawler = LocalCrawler("/Users/ryan/Documents/CS/abyss",
+    crawler = LocalCrawler("/Users/ryan/Documents/CS/CDAC/crawler-service/legacy/decompressor_tests/",
                            "")
     print(crawler.crawl())

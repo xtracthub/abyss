@@ -116,6 +116,8 @@ class AbyssOrchestrator:
         self.abyss_metadata = []
         self.s3_conn = s3_conn
 
+        self._unpredicted_preprocessing_thread = threading.Thread(target=self._unpredicted_preprocessing,
+                                                                  daemon=True)
         self._predictor_thread = threading.Thread(target=self._predict_decompressed_size,
                                                   daemon=True)
         self._scheduler_thread = threading.Thread(target=self._thread_schedule_jobs,
@@ -225,10 +227,10 @@ class AbyssOrchestrator:
 
         print(table_entry)
         print(self.thread_statuses)
-
-        update_table_entry(self.psql_conn, "abyss_status",
-                           {"abyss_id": self.abyss_id},
-                           **table_entry)
+        #
+        # update_table_entry(self.psql_conn, "abyss_status",
+        #                    {"abyss_id": self.abyss_id},
+        #                    **table_entry)
 
     def _orchestrate(self) -> None:
         """
@@ -245,14 +247,15 @@ class AbyssOrchestrator:
         None
         """
         logger.error("STARTING ORCHESTRATION")
+        self._unpredicted_preprocessing_thread.start()
         self._predictor_thread.start()
         self._scheduler_thread.start()
         self._prefetcher_thread.start()
         self._prefetcher_poll_thread.start()
         self._funcx_decompress_thread.start()
-        self._funcx_crawl_thread.start()
+        # self._funcx_crawl_thread.start()
         self._funcx_poll_thread.start()
-        self._consolidate_results_thread.start()
+        # self._consolidate_results_thread.start()
 
         t0 = time.time()
         while not self.kill_status:
@@ -261,14 +264,15 @@ class AbyssOrchestrator:
             self._update_psql_entry()
             logger.error(f"ELAPSED: {time.time() - t0}")
 
+        self._unpredicted_preprocessing_thread.start()
         self._predictor_thread.join()
         self._scheduler_thread.join()
         self._prefetcher_thread.join()
         self._prefetcher_poll_thread.join()
         self._funcx_decompress_thread.join()
-        self._funcx_crawl_thread.join()
+        # self._funcx_crawl_thread.join()
         self._funcx_poll_thread.join()
-        self._consolidate_results_thread.join()
+        # self._consolidate_results_thread.join()
 
         # for metadata in self.abyss_metadata:
         #     logger.error(metadata)
@@ -304,10 +308,12 @@ class AbyssOrchestrator:
                 # If a file is recursively compressed we will use machine learning to predict the file size.
                 # We only use file headers if the compressed file is directly stored on our storage source.
                 if self.prediction_mode == "ml" or job.status != JobStatus.UNPREDICTED:
+                    print(f"placing {job.file_path} into unpredicted predict")
                     job.status = JobStatus.UNPREDICTED_PREDICT
                     unpredicted_predict_queue.put(job)
                 elif self.prediction_mode == "header":
                     if job.file_path.endswith(".zip") or job.file_path.endswith(".tar"):
+                        print(f"placing {job.file_path} into unpredicted schedule")
                         job.status = JobStatus.UNPREDICTED_SCHEDULE
                         unpredicted_schedule_queue.put(job)
                 else:
@@ -790,7 +796,7 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     logger.error(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "zip"].sort_values(by=["size_bytes"]).iloc[0:100]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "zip"].sort_values(by=["size_bytes"]).iloc[0:1]
 
     logger.error(sum(filtered_files.size_bytes))
 
@@ -803,7 +809,7 @@ if __name__ == "__main__":
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
     # compressed_files = [{"file_path": "/UMich/download/DeepBlueData_gt54kn05f/NAmerica_current_30arcsec_generic_set1.zip", "compressed_size": 290392819}]
-    transfer_token = 'AgQWYYnwxWNGnlwVvdXJjwWY9xMkaN4Kg9VnX7GWbzNd09kEwWUvC3MYdW591GJObmNMWz6N980j41FMPa5zWTE3MK'
+    transfer_token = 'AgMpYgW2KV1ymwd6kJl2XVb6e6vE8Mrbq94nm4jj7G7zeaKMBhOCY5862qrppn5jPJX4083abwJ9bCvkedegf0onk'
     abyss_id = str(uuid.uuid4())
     logger.error(abyss_id)
 
@@ -812,7 +818,8 @@ if __name__ == "__main__":
 
     orchestrator = AbyssOrchestrator(abyss_id,"4f99675c-ac1f-11ea-bee8-0e716405a293",
                                      transfer_token, compressed_files,
-                                     workers, psql_conn, sqs_conn)
+                                     workers, psql_conn, sqs_conn,
+                                     prediction_mode="ml")
 
     # d = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'file_id': '6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': '4c0f8eb8-6363-4f34-a6e0-4fee6d2621f3', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'decompress_path': '/home/tskluzac/ryan/results/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}
     # orchestrator.job_statuses[JobStatus.DECOMPRESSED].put(Job.from_dict(d))

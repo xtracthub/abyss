@@ -146,3 +146,4 @@ def get_tar_decompressed_size(file_path: str) -> int:
             decompressed_size += tar_info.size
 
     return decompressed_size
+

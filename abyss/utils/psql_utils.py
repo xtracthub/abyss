@@ -12,6 +12,12 @@ ABYSS_STATUS = {
     "client_id": "TEXT",
     "crawl_status": "TEXT",
     "unpredicted": "INT",
+    "unpredicted_predict": "INT",
+    "unpredicted_schedule": "INT",
+    "unpredicted_scheduled": "INT",
+    "unpredicted_prefetching": "INT",
+    "unpredicted_prefetched": "INT",
+    "processing_headers": "INT",
     "predicted": "INT",
     "scheduled": "INT",
     "prefetching": "INT",
@@ -120,10 +126,13 @@ def table_exists(conn, table_name: str) -> bool:
         Whether the table_name exists.
     """
     cur = conn.cursor()
-    cur.execute("SELECT * FROM information_schema.tables WHERE TABLE_NAME=%s",
-                (table_name,))
+    # cur.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE TABLE_NAME=%s)",
+    #             (table_name,))
+    cur.execute("SELECT to_regclass('public.abyss_status')")
+    x = cur.fetchone()[0]
+    print(x)
 
-    return bool(cur.rowcount)
+    return x
 
 
 def build_tables(conn, tables: Dict[str, dict]) -> None:
@@ -145,6 +154,8 @@ def build_tables(conn, tables: Dict[str, dict]) -> None:
     cur = conn.cursor()
 
     for table_name, table_info in tables.items():
+        print(f"MAKING {table_name}")
+        print(table_exists(conn, table_name))
         if not(table_exists(conn, table_name)):
             column_statements = []
 
@@ -152,10 +163,12 @@ def build_tables(conn, tables: Dict[str, dict]) -> None:
                 column_statements.append(column_name + " " + column_type)
 
             table_statement = f"""CREATE TABLE {table_name} ({", ".join(column_statements)});"""
+            print(table_statement)
             cur.execute(table_statement)
 
     cur.close()
     conn.commit()
+    print("MADE DA TABLES")
 
     logging.info("Successfully created tables")
 
