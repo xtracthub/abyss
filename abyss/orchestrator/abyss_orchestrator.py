@@ -106,6 +106,7 @@ class AbyssOrchestrator:
             job = Job.from_dict(compressed_file)
             job.status = JobStatus.UNPREDICTED
             job.file_id = f"{str(uuid.uuid4())}"
+            job.decompressed_size = 0
             unpredicted_set.put(job)
 
         self.scheduler = Scheduler(batcher, dispatcher,
@@ -127,6 +128,9 @@ class AbyssOrchestrator:
             daemon=True)
         self._prefetcher_poll_thread = threading.Thread(
             target=self._thread_poll_prefetch,
+            daemon=True)
+        self._funcx_process_headers_thread = threading.Thread(
+            target=self._thread_funcx_process_headers,
             daemon=True)
         self._funcx_decompress_thread = threading.Thread(
             target=self._thread_funcx_decompress,
@@ -252,7 +256,8 @@ class AbyssOrchestrator:
         self._scheduler_thread.start()
         self._prefetcher_thread.start()
         self._prefetcher_poll_thread.start()
-        self._funcx_decompress_thread.start()
+        self._funcx_process_headers_thread.start()
+        # self._funcx_decompress_thread.start()
         # self._funcx_crawl_thread.start()
         self._funcx_poll_thread.start()
         # self._consolidate_results_thread.start()
@@ -264,18 +269,20 @@ class AbyssOrchestrator:
             self._update_psql_entry()
             logger.error(f"ELAPSED: {time.time() - t0}")
 
-        self._unpredicted_preprocessing_thread.start()
+        self._unpredicted_preprocessing_thread.join()
         self._predictor_thread.join()
         self._scheduler_thread.join()
         self._prefetcher_thread.join()
         self._prefetcher_poll_thread.join()
-        self._funcx_decompress_thread.join()
+        self._funcx_process_headers_thread.join()
+        # self._funcx_decompress_thread.join()
         # self._funcx_crawl_thread.join()
         self._funcx_poll_thread.join()
         # self._consolidate_results_thread.join()
 
-        # for metadata in self.abyss_metadata:
-        #     logger.error(metadata)
+        for metadata in self.abyss_metadata:
+            print(metadata)
+            # logger.error(metadata)
 
         # metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
         #
@@ -386,6 +393,7 @@ class AbyssOrchestrator:
                 while not unpredicted_schedule_queue.empty():
                     self.thread_statuses["scheduler_thread"] = True
                     job = unpredicted_schedule_queue.get()
+                    print(f"adding {job.file_path} for unpredicted scheduling")
                     logger.error(f"{job.file_path} UNPREDICTED SCHEDULING")
                     job.calculate_total_size()
                     predicted_list.append(job)
@@ -404,6 +412,7 @@ class AbyssOrchestrator:
                         elif job_node.status == JobStatus.PREDICTED:
                             job_node.status = JobStatus.SCHEDULED
                         elif job_node.status == JobStatus.UNPREDICTED_SCHEDULE:
+                            print(f"scheduled {job.file_path} for unpredicted scheduling")
                             job_node.status = JobStatus.UNPREDICTED_SCHEDULED
 
                     if job not in failed_jobs:
@@ -448,12 +457,14 @@ class AbyssOrchestrator:
                             if job_node.status == JobStatus.SCHEDULED:
                                 job_node.status = JobStatus.PREFETCHING
                             elif job_node.status == JobStatus.UNPREDICTED_SCHEDULED:
+                                print(f"prefetching {job.file_path} for unpredicted prefetching")
                                 job_node.status = JobStatus.UNPREDICTED_PREFETCHING
 
                         if job.status == JobStatus.PREFETCHING:
                             prefetching_queue.put(job)
                             scheduled_queue.get()
                         elif job.status == JobStatus.UNPREDICTED_PREFETCHING:
+                            print(f"{job.file_path} has been added to the unpredicted prefetching queue")
                             unpredicted_prefetching_queue.put(job)
                             unpredicted_scheduled_queue.get()
 
@@ -477,7 +488,7 @@ class AbyssOrchestrator:
                 self.thread_statuses["prefetcher_poll_thread"] = True
 
                 if prefetching_queue.empty():
-                    job = unpredicted_prefetched_queue.get()
+                    job = unpredicted_prefetching_queue.get()
                 else:
                     job = prefetching_queue.get()
 
@@ -492,6 +503,7 @@ class AbyssOrchestrator:
                         if job_node.status == JobStatus.PREFETCHING:
                             job_node.status = JobStatus.PREFETCHED
                         elif job_node.status == JobStatus.UNPREDICTED_PREFETCHING:
+                            print(f"successfully prefetched {job.file_path} for unpredicted prefetching")
                             job_node.status = JobStatus.UNPREDICTED_PREFETCHED
 
                     if job.status == JobStatus.PREFETCHED:
@@ -528,13 +540,14 @@ class AbyssOrchestrator:
             while not unpredicted_prefetched_queue.empty():
                 self.thread_statuses["funcx_processing_headers_thread"] = True
                 job = unpredicted_prefetched_queue.get()
+
                 logger.error(f"{job.file_path} PROCESSING HEADERS")
                 job_dict = Job.to_dict(job)
                 worker_id = job.worker_id
+                print(job_dict)
 
                 worker = self.worker_dict[worker_id]
                 funcx_task_id = self.funcx_client.run(job_dict,
-                                                      worker.transfer_dir,
                                                       endpoint_id=worker.funcx_eid,
                                                       function_id=PROCESS_HEADER_FUNCX_UUID)
 
@@ -646,11 +659,13 @@ class AbyssOrchestrator:
                     job.status = JobStatus.PREDICTED
 
                     worker.curr_available_space += job.compressed_size
-                    consolidating_queue.put(job)
+                    predicted_queue.put(job)
                 except Exception as e:
                     if is_non_critical_funcx_error(e):
                         processing_headers_queue.put(job)
                     else:
+                        print("FAILED")
+                        print(e)
                         failed_queue.put(job)
 
                 time.sleep(5)
@@ -819,7 +834,7 @@ if __name__ == "__main__":
     orchestrator = AbyssOrchestrator(abyss_id,"4f99675c-ac1f-11ea-bee8-0e716405a293",
                                      transfer_token, compressed_files,
                                      workers, psql_conn, sqs_conn,
-                                     prediction_mode="ml")
+                                     prediction_mode="header")
 
     # d = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'file_id': '6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': '4c0f8eb8-6363-4f34-a6e0-4fee6d2621f3', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'decompress_path': '/home/tskluzac/ryan/results/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}
     # orchestrator.job_statuses[JobStatus.DECOMPRESSED].put(Job.from_dict(d))

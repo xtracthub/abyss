@@ -1,10 +1,10 @@
 import os
 import funcx
 
-DECOMPRESSOR_FUNCX_UUID = "76cc14f7-8be8-4c0f-9489-b95eae880167"
-GLOBUS_CRAWLER_FUNCX_UUID = "e6b0620f-65e7-4793-8919-97835d68be84"
+DECOMPRESSOR_FUNCX_UUID = "40c9b23b-1fc7-4ca6-a578-3a9995e79235"
+GLOBUS_CRAWLER_FUNCX_UUID = "c06e536f-1cf9-4720-8d28-ddf8ec662799"
 LOCAL_CRAWLER_FUNCX_UUID = "a35e75b7-33d3-449c-b889-ea613fe3ecba"
-PROCESS_HEADER_FUNCX_UUID = "228b94da-d4c6-4145-a053-9b0598b1ab28"
+PROCESS_HEADER_FUNCX_UUID = "8165d49b-3abf-4ce5-bc4b-297175f384e5"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -251,22 +251,25 @@ def process_job_headers(job_dict: dict) -> dict:
     dict
         Job dictionary containing the decompressed size.
     """
+    import os
+    import sys
+    sys.path.insert(0, "/")
     from abyss.orchestrator.job import Job, JobStatus
     from abyss.utils.decompressors import get_zip_decompressed_size, get_tar_decompressed_size
 
     job = Job.from_dict(job_dict)
 
-    if job.status != JobStatus.PROCESSING_HEADERS:
+    if job.status != JobStatus.UNPREDICTED_PREFETCHED:
         raise ValueError(f"Job {job.file_path} status is not PROCESSING_HEADERS")
     elif job.file_path.endswith(".zip"):
-        decompressed_size = get_zip_decompressed_size(job.file_path)
+        decompressed_size = get_zip_decompressed_size(job.transfer_path)
     elif job.file_path.endswith(".zip"):
-        decompressed_size = get_tar_decompressed_size(job.file_path)
+        decompressed_size = get_tar_decompressed_size(job.transfer_path)
     else:
         raise ValueError(f"Can not process headers of {job.file_path}")
 
     job.decompressed_size = decompressed_size
-    os.remove(job.file_path)
+    os.remove(job.transfer_path)
 
     return Job.to_dict(job)
 
