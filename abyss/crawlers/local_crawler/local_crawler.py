@@ -5,7 +5,7 @@ import uuid
 from queue import Queue
 from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
-from abyss.decompressors import is_compressed
+from abyss.utils.decompressors import is_compressed, get_zip_decompressed_size, get_tar_decompressed_size
 
 
 class LocalCrawler(Crawler):
@@ -96,11 +96,29 @@ class LocalCrawler(Crawler):
 
             for full_path in file_ls:
                 if os.path.isfile(full_path):
-                    path = full_path[len(self.base_path) + 1:]
+                    relative_path = full_path[len(self.base_path) + 1:]
                     extension = self.get_extension(full_path)
                     file_size = os.path.getsize(full_path)
 
-                    dir_file_metadata[path] = {
+                    file_metadata = {
+                        "physical": {
+                            "size": file_size,
+                            "extension": extension,
+                            "is_compressed": is_compressed(full_path)
+                        }
+                    }
+
+                    if file_metadata["physical"]["is_compressed"]:
+                        if extension == ".zip":
+                            decompressed_size = get_zip_decompressed_size(full_path)
+                        elif extension == ".tar":
+                            decompressed_size = get_tar_decompressed_size(full_path)
+                        else:
+                            decompressed_size = None
+
+                        file_metadata["physical"]["decompressed_size"] = decompressed_size
+
+                    dir_file_metadata[relative_path] = {
                         "physical": {
                             "size": file_size,
                             "extension": extension,

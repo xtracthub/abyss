@@ -127,7 +127,7 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     from shutil import rmtree
     sys.path.insert(0, "/")
     from abyss.orchestrator.job import Job, JobStatus
-    from abyss.decompressors import decompress
+    from abyss.utils.decompressors import decompress
     from abyss.utils.error_utils import is_critical_oom_error, is_critical_decompression_error
     from abyss.utils.funcx_functions import get_directory_size
     job = Job.from_dict(job_dict)
@@ -237,37 +237,6 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     return Job.to_dict(job)
 
 
-def process_headers(file_path: str) -> int:
-    """Reads .zip and .tar headers to determine the decompressed size of
-    the files.
-
-    Parameters
-    ----------
-    file_path : str
-        File path to .tar or .zip file.
-
-    Returns
-    -------
-    decompressed_size : int
-        Decompressed size of file_path.
-    """
-    import zipfile
-    import tarfile
-
-    decompressed_size = 0
-
-    if file_path.endswith(".zip"):
-        with zipfile.ZipFile(file_path, "r") as zip_f:
-            for zip_info in zip_f.infolist():
-                decompressed_size += zip_info.file_size
-    elif file_path.endswith(".tar"):
-        with tarfile.open(file_path, "r:") as tar_f:
-            for tar_info in tar_f.getmembers():
-                decompressed_size += tar_info.size
-
-    return decompressed_size
-
-
 def process_job_headers(job_dict: dict) -> dict:
     """Takes a job object and reads the file header and determines the
     decompressed size of the job.
@@ -283,17 +252,21 @@ def process_job_headers(job_dict: dict) -> dict:
         Job dictionary containing the decompressed size.
     """
     from abyss.orchestrator.job import Job, JobStatus
+    from abyss.utils.decompressors import get_zip_decompressed_size, get_tar_decompressed_size
 
     job = Job.from_dict(job_dict)
 
     if job.status != JobStatus.PROCESSING_HEADERS:
         raise ValueError(f"Job {job.file_path} status is not PROCESSING_HEADERS")
-    elif not(job.file_path.endswith(".zip") or job.file_path.endswith(".tar")):
+    elif job.file_path.endswith(".zip"):
+        decompressed_size = get_zip_decompressed_size(job.file_path)
+    elif job.file_path.endswith(".zip"):
+        decompressed_size = get_tar_decompressed_size(job.file_path)
+    else:
         raise ValueError(f"Can not process headers of {job.file_path}")
 
-    decompressed_size = process_headers(job.file_path)
-
     job.decompressed_size = decompressed_size
+    os.remove(job.file_path)
 
     return Job.to_dict(job)
 
@@ -306,8 +279,6 @@ def register_funcs():
     print(f"PROCESS HEADER ID: {fx.register_function(process_job_headers, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
 
 def hello_world(x):
-    import logging
-
     return "hello world"
 
 

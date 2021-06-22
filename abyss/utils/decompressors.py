@@ -100,3 +100,49 @@ def decompress(file_path: str, file_type: str, decompress_path: str) -> str:
         decompress_gz(file_path, decompress_path)
     else:
         raise ValueError(f"{file_type} is not a supported type")
+
+
+def get_zip_decompressed_size(file_path: str) -> int:
+    """Reads .zip headers to determine the decompressed size of
+    the file.
+
+    Parameters
+    ----------
+    file_path : str
+        File path to .zip file.
+
+    Returns
+    -------
+    decompressed_size : int
+        Decompressed size of file_path.
+    """
+    decompressed_size = 0
+
+    with zipfile.ZipFile(file_path, "r") as zip_f:
+        for zip_info in zip_f.infolist():
+            decompressed_size += zip_info.file_size
+
+    return decompressed_size
+
+
+def get_tar_decompressed_size(file_path: str) -> int:
+    """Reads .tar headers to determine the decompressed size of
+    the file.
+
+    Parameters
+    ----------
+    file_path : str
+        File path to .tar file.
+
+    Returns
+    -------
+    decompressed_size : int
+        Decompressed size of file_path.
+    """
+    decompressed_size = 0
+
+    with tarfile.open(file_path, "r:") as tar_f:
+        for tar_info in tar_f.getmembers():
+            decompressed_size += tar_info.size
+
+    return decompressed_size

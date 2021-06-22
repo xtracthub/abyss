@@ -8,7 +8,7 @@ import globus_sdk
 
 from abyss.crawlers.crawler import Crawler
 from abyss.crawlers.groupers import get_grouper
-from abyss.decompressors import is_compressed
+from abyss.utils.decompressors import is_compressed
 
 
 class GlobusCrawler(Crawler):

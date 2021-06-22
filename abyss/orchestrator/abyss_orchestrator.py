@@ -738,15 +738,23 @@ class AbyssOrchestrator:
                         child_file_path = os.path.join(root_path, file_path)
 
                         if is_compressed:
+                            if "decompressed_size" in file_metadata["physical"]:
+                                decompressed_size = file_metadata["physical"]["decompressed_size"]
                             if child_file_path in job_node.child_jobs:
                                 break
                             else:
                                 child_job = Job(
                                     file_path=child_file_path,
                                     file_id=f"{str(uuid.uuid4())}",
-                                    compressed_size=file_size,
-                                    status=JobStatus.UNPREDICTED
+                                    compressed_size=file_size
                                 )
+
+                                if decompressed_size:
+                                    child_job.decompressed_size = decompressed_size
+                                    child_job.status = JobStatus.PREDICTED
+                                else:
+                                    child_job.status = JobStatus.UNPREDICTED
+
                                 job_node.child_jobs[child_file_path] = child_job
                                 resubmit_task = True
 
