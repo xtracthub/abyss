@@ -302,50 +302,61 @@ class Job:
 
 
 if __name__ == "__main__":
-    job_dict = {
-        "file_path": "/test",
-        "compressed_size": 10,
-        "decompressed_size": 20,
-        "status": JobStatus.UNPREDICTED.value,
-        "child_jobs": [
-            {
-                "file_path": "/test/1",
-                "compressed_size": 5,
-                "decompressed_size": 10
-            },
-            {
-                "file_path": "/test/2",
-                "compressed_size": 3,
-                "decompressed_size": 6
-            }
-        ]
-    }
-    job_dict2 = {
-        "file_path": "/nice",
-        "compressed_size": 10,
-        "decompressed_size": 20,
-        "child_jobs": [
-            {
-                "file_path": "/test/1",
-                "compressed_size": 5,
-                "decompressed_size": 10
-            },
-            {
-                "file_path": "/test/2",
-                "compressed_size": 3,
-                "decompressed_size": 6
-            }
-        ]
-    }
-    x = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': 'c9a8d41d-2ff7-44f9-a441-36c1c7386c16', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data//UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'decompress_path': '/home/tskluzac/ryan/results/fig01.tar', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'fig01.tar', 'metadata': {'': {'physical': {'size': 102400, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'fig01.tar': {'file_path': 'fig01.tar', 'compressed_size': 102400, 'decompressed_size': 7, 'total_size': 102407, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/fig01.tar', 'decompress_path': '/home/tskluzac/ryan/results/fig01', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CRAWLING', 'metadata': {'root_path': 'fig01', 'metadata': {'fig01/._plot_spectral_albedo.py': {'physical': {'size': 210, 'extension': '.py', 'is_compressed': False}}, 'fig01/._re_164um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_164um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._snicar_spectral_snow_albedo.pdf': {'physical': {'size': 233, 'extension': '.pdf', 'is_compressed': False}}, 'fig01/plot_spectral_albedo.py': {'physical': {'size': 2171, 'extension': '.py', 'is_compressed': False}}, 'fig01/re_164um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_164um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/snicar_spectral_snow_albedo.pdf': {'physical': {'size': 28293, 'extension': '.pdf', 'is_compressed': False}}}}, 'child_jobs': {}}}}
+    # job_dict = {
+    #     "file_path": "/test",
+    #     "compressed_size": 10,
+    #     "decompressed_size": 20,
+    #     "status": JobStatus.UNPREDICTED.value,
+    #     "child_jobs": [
+    #         {
+    #             "file_path": "/test/1",
+    #             "compressed_size": 5,
+    #             "decompressed_size": 10
+    #         },
+    #         {
+    #             "file_path": "/test/2",
+    #             "compressed_size": 3,
+    #             "decompressed_size": 6
+    #         }
+    #     ]
+    # }
+    # job_dict2 = {
+    #     "file_path": "/nice",
+    #     "compressed_size": 10,
+    #     "decompressed_size": 20,
+    #     "child_jobs": [
+    #         {
+    #             "file_path": "/test/1",
+    #             "compressed_size": 5,
+    #             "decompressed_size": 10
+    #         },
+    #         {
+    #             "file_path": "/test/2",
+    #             "compressed_size": 3,
+    #             "decompressed_size": 6
+    #         }
+    #     ]
+    # }
+    # x = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': 'c9a8d41d-2ff7-44f9-a441-36c1c7386c16', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data//UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'decompress_path': '/home/tskluzac/ryan/results/fig01.tar', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'fig01.tar', 'metadata': {'': {'physical': {'size': 102400, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'fig01.tar': {'file_path': 'fig01.tar', 'compressed_size': 102400, 'decompressed_size': 7, 'total_size': 102407, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/fig01.tar', 'decompress_path': '/home/tskluzac/ryan/results/fig01', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CRAWLING', 'metadata': {'root_path': 'fig01', 'metadata': {'fig01/._plot_spectral_albedo.py': {'physical': {'size': 210, 'extension': '.py', 'is_compressed': False}}, 'fig01/._re_164um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_164um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_0bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._re_55um_100bc.txt': {'physical': {'size': 206, 'extension': '.txt', 'is_compressed': False}}, 'fig01/._snicar_spectral_snow_albedo.pdf': {'physical': {'size': 233, 'extension': '.pdf', 'is_compressed': False}}, 'fig01/plot_spectral_albedo.py': {'physical': {'size': 2171, 'extension': '.py', 'is_compressed': False}}, 'fig01/re_164um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_164um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_0bc.txt': {'physical': {'size': 12726, 'extension': '.txt', 'is_compressed': False}}, 'fig01/re_55um_100bc.txt': {'physical': {'size': 12725, 'extension': '.txt', 'is_compressed': False}}, 'fig01/snicar_spectral_snow_albedo.pdf': {'physical': {'size': 28293, 'extension': '.pdf', 'is_compressed': False}}}}, 'child_jobs': {}}}}
+    #
+    # y = Job.from_dict(x)
+    # y.status = JobStatus.FAILED
+    # y.error = "OOM"
+    #
+    # print(y.consolidate_metadata())
+    #
+    # print(y.to_queue(include_root=True))
+
+    import json
+
+    with open("/Users/ryan/Documents/CS/abyss/abyss/orchestrator/test.json") as f:
+        x = json.load(f)
 
     y = Job.from_dict(x)
-    y.status = JobStatus.FAILED
-    y.error = "OOM"
+    print(y.metadata)
 
-    print(y.consolidate_metadata())
 
-    print(y.to_queue(include_root=True))
+
     # print(y.consolidate_metadata())
 
 

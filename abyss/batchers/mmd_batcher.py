@@ -122,7 +122,10 @@ class MMDBatcher(Batcher):
                     worker = self.worker_dict[worker_id]
                     self.worker_batches[worker_id].append(job)
 
+                    print(f"worker space before batching: {worker.curr_available_space}")
                     worker.curr_available_space -= total_size
+                    print(f"worker space after batching: {worker.curr_available_space}")
+                    print(f"da job: {Job.to_dict(job)}")
                     worker_info_tuple[1] += total_size
                     break
                 elif idx == len(self.workers) - 1:

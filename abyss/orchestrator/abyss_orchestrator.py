@@ -105,7 +105,8 @@ class AbyssOrchestrator:
         for compressed_file in compressed_files:
             job = Job.from_dict(compressed_file)
             job.status = JobStatus.UNPREDICTED
-            job.file_id = f"{str(uuid.uuid4())}"
+            # job.file_id = str(uuid.uuid4())
+            job.file_id = "79d8c05b-1f07-4ce8-8478-523568788e9d"
             job.decompressed_size = 0
             unpredicted_set.put(job)
 
@@ -257,10 +258,10 @@ class AbyssOrchestrator:
         self._prefetcher_thread.start()
         self._prefetcher_poll_thread.start()
         self._funcx_process_headers_thread.start()
-        # self._funcx_decompress_thread.start()
-        # self._funcx_crawl_thread.start()
+        self._funcx_decompress_thread.start()
+        self._funcx_crawl_thread.start()
         self._funcx_poll_thread.start()
-        # self._consolidate_results_thread.start()
+        self._consolidate_results_thread.start()
 
         t0 = time.time()
         while not self.kill_status:
@@ -275,10 +276,10 @@ class AbyssOrchestrator:
         self._prefetcher_thread.join()
         self._prefetcher_poll_thread.join()
         self._funcx_process_headers_thread.join()
-        # self._funcx_decompress_thread.join()
-        # self._funcx_crawl_thread.join()
+        self._funcx_decompress_thread.join()
+        self._funcx_crawl_thread.join()
         self._funcx_poll_thread.join()
-        # self._consolidate_results_thread.join()
+        self._consolidate_results_thread.join()
 
         for metadata in self.abyss_metadata:
             print(metadata)
@@ -316,13 +317,16 @@ class AbyssOrchestrator:
                 # We only use file headers if the compressed file is directly stored on our storage source.
                 if self.prediction_mode == "ml" or job.status != JobStatus.UNPREDICTED:
                     print(f"placing {job.file_path} into unpredicted predict")
-                    job.status = JobStatus.UNPREDICTED_PREDICT
+                    if job.status == JobStatus.UNPREDICTED:
+                        job.status = JobStatus.UNPREDICTED_PREDICT
                     unpredicted_predict_queue.put(job)
                 elif self.prediction_mode == "header":
                     if job.file_path.endswith(".zip") or job.file_path.endswith(".tar"):
                         print(f"placing {job.file_path} into unpredicted schedule")
                         job.status = JobStatus.UNPREDICTED_SCHEDULE
                         unpredicted_schedule_queue.put(job)
+                    else:
+                        unpredicted_predict_queue.put(job)
                 else:
                     raise ValueError(f"Unknown prediction mode \"{self.prediction_mode}\"")
 
@@ -408,7 +412,7 @@ class AbyssOrchestrator:
                     for job_node in job.bfs_iterator(include_root=True):
                         if job in failed_jobs:
                             job_node.status = JobStatus.FAILED
-                            job_node.eror = "Could not schedule"
+                            job_node.error = "Could not schedule"
                         elif job_node.status == JobStatus.PREDICTED:
                             job_node.status = JobStatus.SCHEDULED
                         elif job_node.status == JobStatus.UNPREDICTED_SCHEDULE:
@@ -460,13 +464,13 @@ class AbyssOrchestrator:
                                 print(f"prefetching {job.file_path} for unpredicted prefetching")
                                 job_node.status = JobStatus.UNPREDICTED_PREFETCHING
 
-                        if job.status == JobStatus.PREFETCHING:
-                            prefetching_queue.put(job)
-                            scheduled_queue.get()
-                        elif job.status == JobStatus.UNPREDICTED_PREFETCHING:
+                        if job.status == JobStatus.UNPREDICTED_PREFETCHING:
                             print(f"{job.file_path} has been added to the unpredicted prefetching queue")
                             unpredicted_prefetching_queue.put(job)
                             unpredicted_scheduled_queue.get()
+                        else:
+                            prefetching_queue.put(job)
+                            scheduled_queue.get()
 
             self.thread_statuses["prefetcher_thread"] = False
 
@@ -506,10 +510,10 @@ class AbyssOrchestrator:
                             print(f"successfully prefetched {job.file_path} for unpredicted prefetching")
                             job_node.status = JobStatus.UNPREDICTED_PREFETCHED
 
-                    if job.status == JobStatus.PREFETCHED:
-                        prefetched_queue.put(job)
-                    elif job.status == JobStatus.UNPREDICTED_PREFETCHED:
+                    if job.status == JobStatus.UNPREDICTED_PREFETCHED:
                         unpredicted_prefetched_queue.put(job)
+                    else:
+                        prefetched_queue.put(job)
                 elif prefetcher_status == PrefetcherStatuses.FAILED:
                     for job_node in job.bfs_iterator(include_root=True):
                         if job_node.status == JobStatus.PREFETCHING or job_node.status == JobStatus.UNPREDICTED_PREFETCHING:
@@ -518,10 +522,10 @@ class AbyssOrchestrator:
                     # Potentially add more logic here or in prefetcher to restart failed transfer
                     failed_queue.put(job)
                 else:
-                    if job.status == JobStatus.PREFETCHING:
-                        prefetching_queue.put(job)
-                    elif job.status == JobStatus.UNPREDICTED_PREFETCHING:
+                    if job.status == JobStatus.UNPREDICTED_PREFETCHING:
                         unpredicted_prefetching_queue.put(job)
+                    else:
+                        prefetching_queue.put(job)
 
             self.thread_statuses["prefetcher_poll_thread"] = False
             time.sleep(5)
@@ -612,6 +616,7 @@ class AbyssOrchestrator:
                 worker_id = job.worker_id
 
                 worker = self.worker_dict[worker_id]
+                print(f"job being passed to crawl {job_dict}")
                 funcx_task_id = self.funcx_client.run(job_dict,
                                                       "",
                                                       endpoint_id=worker.funcx_eid,
@@ -664,9 +669,15 @@ class AbyssOrchestrator:
                     if is_non_critical_funcx_error(e):
                         processing_headers_queue.put(job)
                     else:
-                        print("FAILED")
+                        print("FAILED during header processing")
                         print(e)
-                        failed_queue.put(job)
+                        print(f"{worker.curr_available_space} before space")
+                        worker.curr_available_space += job.compressed_size
+                        print(f"{worker.curr_available_space} after space")
+                        print(f"da failed job: {Job.to_dict(job)}")
+                        unpredicted_predict_queue = self.job_statuses[JobStatus.UNPREDICTED_PREDICT]
+                        job.status = JobStatus.UNPREDICTED_PREDICT
+                        unpredicted_predict_queue.put(job)
 
                 time.sleep(5)
 
@@ -683,9 +694,12 @@ class AbyssOrchestrator:
                     logger.error(f"{job.file_path} COMPLETED DECOMPRESS")
 
                     if job.status == JobStatus.FAILED:
+                        print("BUT DA JOB FAILED")
+                        worker.curr_available_space += job.total_size
                         failed_queue.put(job)
                         continue
                     if job.status == JobStatus.UNPREDICTED:
+                        worker.curr_available_space += job.total_size
                         unpredicted_queue.put(job)
                         continue
 
@@ -694,6 +708,7 @@ class AbyssOrchestrator:
                             job_node.status = JobStatus.DECOMPRESSED
 
                     worker.curr_available_space += job.compressed_size
+                    print(f"returned from decompression: {Job.to_dict(job)}")
 
                     decompressed_queue.put(job)
                 except Exception as e:
@@ -701,6 +716,12 @@ class AbyssOrchestrator:
                     if is_non_critical_funcx_error(e):
                         decompressing_queue.put(job)
                     else:
+                        print("FAILED during decompressing")
+                        print(e)
+                        print(f"{worker.curr_available_space} before space")
+                        worker.curr_available_space += job.compressed_size
+                        print(f"{worker.curr_available_space} after space")
+                        print(f"da failed job: {Job.to_dict(job)}")
                         failed_queue.put(job)
 
                 time.sleep(5)
@@ -716,6 +737,12 @@ class AbyssOrchestrator:
                     job = Job.from_dict(result)
                     logger.error(f"{job.file_path} COMPLETED CRAWL")
 
+                    # if job.child_jobs != dict():
+                    #     print("THIS IS THE SECOND TIME")
+                    #     key = list(job.child_jobs.keys())[0]
+                    #     job.child_jobs[key].metadata["metadata"] = dict()
+                    #     print(f"returned from crawler {Job.to_dict(job)}")
+
                     for job_node in job.bfs_iterator(include_root=True):
                         if job_node.status == JobStatus.CRAWLING:
                             job_node.status = JobStatus.CONSOLIDATING
@@ -727,7 +754,13 @@ class AbyssOrchestrator:
                     if is_non_critical_funcx_error(e):
                         crawling_queue.put(job)
                     else:
+                        print("FAILED during crawl ")
+                        print(f"{worker.curr_available_space} before space")
+                        worker.curr_available_space += (job.total_size - job.compressed_size)
+                        print(f"{worker.curr_available_space} after space")
+                        print(f"da failed job: {Job.to_dict(job)}")
                         failed_queue.put(job)
+                        raise e
 
                 time.sleep(5)
 
@@ -748,6 +781,8 @@ class AbyssOrchestrator:
             while not consolidating_queue.empty():
                 self.thread_statuses["consolidate_results_thread"] = True
                 job = consolidating_queue.get()
+                print(f"Beep boop trying to consolidate {job.file_path}")
+                print(Job.to_dict(job))
 
                 resubmit_task = False
                 for job_node in job.bfs_iterator(include_root=True):
@@ -761,9 +796,12 @@ class AbyssOrchestrator:
                         if is_compressed:
                             if "decompressed_size" in file_metadata["physical"]:
                                 decompressed_size = file_metadata["physical"]["decompressed_size"]
+                            else:
+                                decompressed_size = None
                             if child_file_path in job_node.child_jobs:
                                 break
                             else:
+                                print("Found compressed file so resubmitting")
                                 child_job = Job(
                                     file_path=child_file_path,
                                     file_id=f"{str(uuid.uuid4())}",
@@ -781,6 +819,7 @@ class AbyssOrchestrator:
 
                 if resubmit_task:
                     logger.error(f"{job.file_path} RESUBMITTING")
+                    print(Job.to_dict(job))
                     unpredicted_queue.put(job)
                     continue
 
@@ -811,7 +850,10 @@ if __name__ == "__main__":
     PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
     logger.error(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "zip"].sort_values(by=["size_bytes"]).iloc[0:1]
+
+
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[5:6]
+    print(filtered_files)
 
     logger.error(sum(filtered_files.size_bytes))
 

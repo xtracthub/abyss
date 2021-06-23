@@ -3,8 +3,8 @@ import funcx
 
 DECOMPRESSOR_FUNCX_UUID = "40c9b23b-1fc7-4ca6-a578-3a9995e79235"
 GLOBUS_CRAWLER_FUNCX_UUID = "c06e536f-1cf9-4720-8d28-ddf8ec662799"
-LOCAL_CRAWLER_FUNCX_UUID = "a35e75b7-33d3-449c-b889-ea613fe3ecba"
-PROCESS_HEADER_FUNCX_UUID = "8165d49b-3abf-4ce5-bc4b-297175f384e5"
+LOCAL_CRAWLER_FUNCX_UUID = "4ec0f42b-8adc-4599-903e-cb231b0ee0eb"
+PROCESS_HEADER_FUNCX_UUID = "62b494f9-47e9-48c2-9e7f-599c3f899b54"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -60,18 +60,29 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     logger.addHandler(f_handler)
 
     job = Job.from_dict(job_dict)
+    logger.error(f"OG task {job_dict}")
+    logger.error(f"OG task to dict {Job.to_dict(job)}")
+    logger.error(f"og metadata {job.metadata}")
 
     for job_node in job.bfs_iterator(include_root=True):
+        logger.error(f"job_node {job_node.file_path}")
+        logger.error(f"og meta {job.metadata}")
         if job_node.status == JobStatus.DECOMPRESSED:
+            logger.error(f"right before crawling {job_node.file_path}")
+            logger.error(f"da og meta {job.metadata}")
             logger.error(f"CRAWLING {job_node.decompress_path}")
             crawler = LocalCrawler(job_node.decompress_path,
                                    grouper_name,
                                    max_crawl_threads=max_crawl_threads)
 
             metadata = crawler.crawl()
+            logger.error(f"right after crawling {job_node.file_path}")
+            logger.error(f"dat og meta {job.metadata}")
             job_node.metadata = metadata
             job_node.status = JobStatus.CRAWLING
 
+            logger.error(f"after settting dat meta {job_node.file_path}")
+            logger.error(f"dat original meta {job.metadata}")
             logger.error(f"DONE CRAWLING {job_node.decompress_path}")
 
         if os.path.exists(job_node.decompress_path):
@@ -81,6 +92,8 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
             else:
                 shutil.rmtree(job_node.decompress_path)
                 logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
+
+    # logger.error(f"FINAL JOB {Job.to_dict(job)}")
 
     return Job.to_dict(job)
 
@@ -263,7 +276,7 @@ def process_job_headers(job_dict: dict) -> dict:
         raise ValueError(f"Job {job.file_path} status is not PROCESSING_HEADERS")
     elif job.file_path.endswith(".zip"):
         decompressed_size = get_zip_decompressed_size(job.transfer_path)
-    elif job.file_path.endswith(".zip"):
+    elif job.file_path.endswith(".tar"):
         decompressed_size = get_tar_decompressed_size(job.transfer_path)
     else:
         raise ValueError(f"Can not process headers of {job.file_path}")
