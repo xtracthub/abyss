@@ -1,10 +1,10 @@
 import os
 import funcx
 
-DECOMPRESSOR_FUNCX_UUID = "40c9b23b-1fc7-4ca6-a578-3a9995e79235"
-GLOBUS_CRAWLER_FUNCX_UUID = "c06e536f-1cf9-4720-8d28-ddf8ec662799"
-LOCAL_CRAWLER_FUNCX_UUID = "4ec0f42b-8adc-4599-903e-cb231b0ee0eb"
-PROCESS_HEADER_FUNCX_UUID = "62b494f9-47e9-48c2-9e7f-599c3f899b54"
+DECOMPRESSOR_FUNCX_UUID = "bba22e8c-e5ad-41f3-846c-af62a762e130"
+GLOBUS_CRAWLER_FUNCX_UUID = "7f87f506-6f44-4897-860c-47d29a1eeaac"
+LOCAL_CRAWLER_FUNCX_UUID = "596e78c5-e0c1-4ebf-957c-9d571ca7a03c"
+PROCESS_HEADER_FUNCX_UUID = "1d6dfb35-e4a4-4c09-bb6b-f77ccf36fa4b"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -60,30 +60,17 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     logger.addHandler(f_handler)
 
     job = Job.from_dict(job_dict)
-    logger.error(f"OG task {job_dict}")
-    logger.error(f"OG task to dict {Job.to_dict(job)}")
-    logger.error(f"og metadata {job.metadata}")
 
     for job_node in job.bfs_iterator(include_root=True):
-        logger.error(f"job_node {job_node.file_path}")
-        logger.error(f"og meta {job.metadata}")
         if job_node.status == JobStatus.DECOMPRESSED:
-            logger.error(f"right before crawling {job_node.file_path}")
-            logger.error(f"da og meta {job.metadata}")
             logger.error(f"CRAWLING {job_node.decompress_path}")
             crawler = LocalCrawler(job_node.decompress_path,
                                    grouper_name,
                                    max_crawl_threads=max_crawl_threads)
 
             metadata = crawler.crawl()
-            logger.error(f"right after crawling {job_node.file_path}")
-            logger.error(f"dat og meta {job.metadata}")
             job_node.metadata = metadata
             job_node.status = JobStatus.CRAWLING
-
-            logger.error(f"after settting dat meta {job_node.file_path}")
-            logger.error(f"dat original meta {job.metadata}")
-            logger.error(f"DONE CRAWLING {job_node.decompress_path}")
 
         if os.path.exists(job_node.decompress_path):
             if os.path.isfile(job_node.decompress_path):
@@ -92,8 +79,6 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
             else:
                 shutil.rmtree(job_node.decompress_path)
                 logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
-
-    # logger.error(f"FINAL JOB {Job.to_dict(job)}")
 
     return Job.to_dict(job)
 
@@ -183,12 +168,9 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
 
                 decompress(file_path, decompress_type, extract_dir)
 
-            # if get_directory_size(decompress_dir) > 50:
-            #     raise OSError(28, "No space left on device")
-
             job_node.decompress_path = full_extract_dir
 
-            logger.error(f"DECOMPRESSED {file_path} to {full_extract_dir}")
+            logger.error(f"DECOMPRESSED {file_path} TO {full_extract_dir}")
 
             for child_job in job_node.child_jobs.values():
                 # TODO: Fix this gross if statement. We might want to decompress
