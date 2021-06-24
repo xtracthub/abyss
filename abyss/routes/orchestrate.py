@@ -62,6 +62,7 @@ def launch():
     grouper = ""
     batcher = "mmd"
     dispatcher = "fifo"
+    prediction_mode = "ml"
 
     if "grouper" in orchestrator_params:
         grouper = orchestrator_params["grouper"]
@@ -69,6 +70,8 @@ def launch():
         batcher = orchestrator_params["batcher"]
     if "dispatcher" in orchestrator_params:
         dispatcher = orchestrator_params["dispatcher"]
+    if "prediction_mode" in orchestrator_params:
+        prediction_mode = orchestrator_params["prediction_mode"]
 
     orchestrator = AbyssOrchestrator(
         abyss_id,
@@ -80,7 +83,8 @@ def launch():
         sqs_conn,
         grouper=grouper,
         batcher=batcher,
-        dispatcher=dispatcher
+        dispatcher=dispatcher,
+        prediction_mode=prediction_mode
     )
 
     orchestrator.start()

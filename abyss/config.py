@@ -14,3 +14,4 @@ class Config(object):
     AWS_SECRET = os.environ.get("AWS_SECRET")
     AWS_ACCESS = os.environ.get("AWS_ACCESS")
     AWS_REGION = os.environ.get("AWS_REGION")
+

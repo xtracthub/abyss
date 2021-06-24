@@ -67,7 +67,7 @@ def read_flask_aws_config(app: Flask) -> dict:
 
 
 def create_sqs_connection(aws_access: str, aws_secret: str,
-                          region_name: str):
+                          aws_region: str):
     """Creates connection to SQS.
 
     Parameters
@@ -76,7 +76,7 @@ def create_sqs_connection(aws_access: str, aws_secret: str,
         AWS access key ID.
     aws_secret : str
         AWS secret access key.
-    region_name : str
+    aws_region : str
         Region that SQS queue is located in.
 
     Returns
@@ -86,7 +86,7 @@ def create_sqs_connection(aws_access: str, aws_secret: str,
     sqs = boto3.resource("sqs",
                          aws_access_key_id=aws_access,
                          aws_secret_access_key=aws_secret,
-                         region_name=region_name)
+                         region_name=aws_region)
 
     return sqs
 

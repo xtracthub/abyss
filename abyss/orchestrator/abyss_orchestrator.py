@@ -1,6 +1,7 @@
-import logging
+import os
 import logging
 import threading
+import time
 import uuid
 from queue import Queue
 from typing import Dict, List
@@ -20,7 +21,7 @@ from abyss.utils.funcx_functions import LOCAL_CRAWLER_FUNCX_UUID, \
 from abyss.utils.psql_utils import update_table_entry
 
 REQUIRED_ORCHESTRATOR_PARAMETERS = [
-            ("globus_source_eid", str),
+            ("globus_eid", str),
             ("transfer_token", str),
             ("compressed_files", list),
             ("worker_params", list)
@@ -105,8 +106,7 @@ class AbyssOrchestrator:
         for compressed_file in compressed_files:
             job = Job.from_dict(compressed_file)
             job.status = JobStatus.UNPREDICTED
-            # job.file_id = str(uuid.uuid4())
-            job.file_id = "79d8c05b-1f07-4ce8-8478-523568788e9d"
+            job.file_id = str(uuid.uuid4())
             job.decompressed_size = 0
             unpredicted_set.put(job)
 
@@ -189,7 +189,7 @@ class AbyssOrchestrator:
             Worker.validate_dict_params(worker_param)
 
     def start(self) -> None:
-        threading.Thread(target=self._orchestrate()).start()
+        threading.Thread(target=self._orchestrate).start()
 
     def _update_kill_status(self) -> None:
         """Checks whether all jobs are either succeeded or failed.
@@ -232,10 +232,10 @@ class AbyssOrchestrator:
 
         print(table_entry)
         print(self.thread_statuses)
-        #
-        # update_table_entry(self.psql_conn, "abyss_status",
-        #                    {"abyss_id": self.abyss_id},
-        #                    **table_entry)
+
+        update_table_entry(self.psql_conn, "abyss_status",
+                           {"abyss_id": self.abyss_id},
+                           **table_entry)
 
     def _orchestrate(self) -> None:
         """
@@ -281,8 +281,13 @@ class AbyssOrchestrator:
         self._funcx_poll_thread.join()
         self._consolidate_results_thread.join()
 
-        for metadata in self.abyss_metadata:
-            print(metadata)
+        with open("test.json", "a") as f:
+            import json
+            for metadata in self.abyss_metadata:
+                print(metadata)
+                f.write(json.dumps(metadata))
+
+
             # logger.error(metadata)
 
         # metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
@@ -843,7 +848,6 @@ class AbyssOrchestrator:
 
 if __name__ == "__main__":
     import pandas as pd
-    import os
     from abyss.utils.psql_utils import read_db_config_file, create_connection
     from abyss.utils.aws_utils import create_s3_connection, read_aws_config_file
 
@@ -851,8 +855,7 @@ if __name__ == "__main__":
     logger.error(PROJECT_ROOT)
     deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
 
-
-    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[5:6]
+    filtered_files = deep_blue_crawl_df[deep_blue_crawl_df.extension == "gz"].sort_values(by=["size_bytes"]).iloc[0:3]
     print(filtered_files)
 
     logger.error(sum(filtered_files.size_bytes))
@@ -866,7 +869,7 @@ if __name__ == "__main__":
 
     compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
     # compressed_files = [{"file_path": "/UMich/download/DeepBlueData_gt54kn05f/NAmerica_current_30arcsec_generic_set1.zip", "compressed_size": 290392819}]
-    transfer_token = 'AgMpYgW2KV1ymwd6kJl2XVb6e6vE8Mrbq94nm4jj7G7zeaKMBhOCY5862qrppn5jPJX4083abwJ9bCvkedegf0onk'
+    transfer_token = 'AgVPGlGXXWMg6q2WWPmpj8aX6w2qkQNXvJE39vxMjxaplo5G3dcbCOVqexqmezdrEKn9GDOzzBBvxxtl1e6e8HpD3o'
     abyss_id = str(uuid.uuid4())
     logger.error(abyss_id)
 
@@ -880,8 +883,6 @@ if __name__ == "__main__":
 
     # d = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'file_id': '6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': '4c0f8eb8-6363-4f34-a6e0-4fee6d2621f3', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'decompress_path': '/home/tskluzac/ryan/results/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}
     # orchestrator.job_statuses[JobStatus.DECOMPRESSED].put(Job.from_dict(d))
-
-    import time
 
     t0 = time.time()
     orchestrator._orchestrate()

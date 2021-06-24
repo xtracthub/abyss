@@ -104,6 +104,7 @@ def create_connection(credentials: dict):
     conn
         Connection object to database.
     """
+    print(credentials)
     conn = psycopg2.connect(**credentials)
     logging.info("Connection to database succeeded")
 
@@ -126,10 +127,11 @@ def table_exists(conn, table_name: str) -> bool:
         Whether the table_name exists.
     """
     cur = conn.cursor()
-    # cur.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE TABLE_NAME=%s)",
-    #             (table_name,))
-    cur.execute("SELECT to_regclass('public.abyss_status')")
-    x = cur.fetchone()[0]
+    cur.execute("select * from information_schema.tables where table_name=%s",
+                (table_name,))
+    for record in cur:
+        print(record)
+    x = cur.rowcount
     print(x)
 
     return x
