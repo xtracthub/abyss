@@ -7,6 +7,8 @@ import psycopg2
 import psycopg2.extras
 from flask import Flask
 
+from abyss.definitions import ROOT_DIR
+
 ABYSS_STATUS = {
     "abyss_id": "TEXT PRIMARY KEY",
     "client_id": "TEXT",
@@ -31,7 +33,7 @@ ABYSS_STATUS = {
 }
 
 ABYSS_TABLES = {"abyss_status": ABYSS_STATUS}
-PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
+PROJECT_ROOT = ROOT_DIR + "/"
 
 
 def read_flask_db_config(app: Flask) -> dict:

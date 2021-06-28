@@ -153,7 +153,7 @@ def get_metadata():
         metadata = dict()
 
         metadata_file_path = os.path.join("/tmp", f"{abyss_id}.txt")
-        s3_download_file(s3_conn, "xtract-abyss", metadata_file_path, f"{abyss_id}.txt")
+        s3_download_file(s3_conn, "xtract-abyss", f"{abyss_id}.txt", metadata_file_path)
 
         with open(metadata_file_path) as f:
             for line in f.readlines():

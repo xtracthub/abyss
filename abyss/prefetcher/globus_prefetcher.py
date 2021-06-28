@@ -4,7 +4,9 @@ import time
 import uuid
 from enum import Enum
 from queue import Queue
-from typing import Dict, List, Union
+from typing import List, Union
+
+from abyss.orchestrator.job import Job
 
 import globus_sdk
 
@@ -24,7 +26,8 @@ class PrefetcherStatuses(Enum):
 class GlobusPrefetcher:
     def __init__(self, transfer_token: str, globus_source_eid: str,
                  globus_dest_eid: str, transfer_dir: str,
-                 max_concurrent_transfers: int):
+                 max_concurrent_transfers=4, max_files_per_batch=100,
+                 max_batch_size=10*10**9):
         """Class for facilitating transfers to a Globus endpoint.
 
         Parameters
@@ -43,6 +46,8 @@ class GlobusPrefetcher:
         self.globus_dest_eid = globus_dest_eid
         self.transfer_dir = transfer_dir
         self.max_concurrent_transfers = max_concurrent_transfers
+        self.max_files_per_batch = max_files_per_batch
+        self.max_batch_size = max_batch_size
 
         self.files_to_transfer = Queue()
         self.num_current_transfers = 0
@@ -52,64 +57,66 @@ class GlobusPrefetcher:
 
         self._get_transfer_client()
 
-    def transfer(self, source_file_path: str, dest_file_name: str) -> None:
+    def transfer_job(self, job: Job) -> None:
         """Submits a file path to queue for transferring.
 
         Parameters
         ----------
-        source_file_path : str
-            File path of file on globus_source_eid to transfer.
-        dest_file_name : str
-            Name of give to transferred file on globus_source_eid.
+        job: Job
+            Job object of file to transfer.
 
         Returns
         -------
         None
         """
-        self.files_to_transfer.put({
-            "source_file_path": source_file_path,
-            "dest_file_name": dest_file_name
-        })
+        self.files_to_transfer.put(job)
 
         with self.lock:
             # Dummy UUID until file is actually submitted
             file_id = uuid.uuid4()
-            self.file_id_mapping[source_file_path] = file_id
+            self.file_id_mapping[job.file_path] = file_id
             self.id_status[file_id] = PrefetcherStatuses.QUEUED
 
-            logger.info(f"{source_file_path}: QUEUED")
+            logger.info(f"{job.file_path}: QUEUED")
 
         self._start_thread()
 
-    def transfer_batch(self, file_path_mappings: List[Dict]) -> None:
+    def transfer_job_batch(self, jobs: List[Job]) -> None:
         """Submits a list of file_paths to queue for transferring.
 
         Parameters
         ----------
-        file_path_mappings : list(dict)
-            List of dictionaries mapping "source_file_path" to file path
-            of file on globus_source_eid to transfer and "dest_file_name"
-            to name of give to transferred file on globus_source_eid.
+        jobs : list(Job)
+            List of jobs to transfer as a batch.
 
         Returns
         -------
         None
         """
-        for file_path_mapping in file_path_mappings:
-            assert "source_file_path" in file_path_mapping, "Transfer batch item missing source_file_path"
-            assert "dest_file_name" in file_path_mapping, "Transfer batch item missing dest_file_name"
-
-        self.files_to_transfer.put(file_path_mappings)
-
         with self.lock:
-            for file_path_mapping in file_path_mappings:
-                file_path = file_path_mapping["source_file_path"]
-                # Dummy UUID until file is actually submitted
-                file_id = uuid.uuid4()
-                self.file_id_mapping[file_path] = file_id
-                self.id_status[file_id] = PrefetcherStatuses.QUEUED
+            idx = 0
+            while idx < len(jobs):
+                job_batch = []
+                job_batch_size = 0
+                job_batch_num_files = 0
 
-                logger.info(f"{file_path}: QUEUED")
+                while job_batch_size <= self.max_batch_size and job_batch_num_files < self.max_files_per_batch and idx < len(jobs):
+                    job = jobs[idx]
+                    job_batch.append(job)
+
+                    file_path = job.file_path
+                    # Dummy UUID until file is actually submitted
+                    file_id = uuid.uuid4()
+                    self.file_id_mapping[file_path] = file_id
+                    self.id_status[file_id] = PrefetcherStatuses.QUEUED
+
+                    idx += 1
+                    job_batch_size += job.compressed_size
+                    job_batch_num_files += 1
+
+                    logger.info(f"{file_path}: QUEUED")
+
+                self.files_to_transfer.put(job_batch)
 
         self._start_thread()
 
@@ -164,19 +171,17 @@ class GlobusPrefetcher:
             task = self.files_to_transfer.get()
 
             if isinstance(task, list):
-                self._thread_transfer_batch(task)
+                self._thread_transfer_job_batch(task)
             else:
-                self._thread_transfer_file(task)
+                self._thread_transfer_job(task)
 
-    def _thread_transfer_file(self, file_path_mapping: dict) -> None:
+    def _thread_transfer_job(self, job: Job) -> None:
         """Thread function for transferring individual files.
 
         Parameters
         ----------
-        file_path_mapping : dict
-            Dictionary mapping "source_file_path" to file path
-            of file on globus_source_eid to transfer and "dest_file_name"
-            to name of give to transferred file on globus_source_eid.
+        job : Job
+            Job object of file to transfer.
 
         Returns
         -------
@@ -190,15 +195,15 @@ class GlobusPrefetcher:
             logger.error(f"Prefetcher caught {e}")
 
             with self.lock:
-                source_file_path = file_path_mapping["source_file_path"]
+                source_file_path = job.file_path
                 task_id = self.file_id_mapping[source_file_path]
 
                 self.id_status[task_id] = PrefetcherStatuses.FAILED
 
             return
 
-        source_file_path = file_path_mapping["source_file_path"]
-        dest_file_name = file_path_mapping["dest_file_name"]
+        source_file_path = job.file_path
+        dest_file_name = job.file_id
 
         full_path = f"{self.transfer_dir}/{dest_file_name}"
         tdata.add_item(source_file_path,
@@ -223,15 +228,13 @@ class GlobusPrefetcher:
 
             logger.info(f"{source_file_path}: {task_data['status']}")
 
-    def _thread_transfer_batch(self, file_path_mappings: List[Dict]) -> None:
+    def _thread_transfer_job_batch(self, jobs: List[Job]) -> None:
         """Thread function for transferring list of files.
 
         Parameters
         ----------
-        file_path_mappings : list(dict)
-            List of dictionaries mapping "source_file_path" to file path
-            of file on globus_source_eid to transfer and "dest_file_name"
-            to name of give to transferred file on globus_source_eid.
+        jobs : list(Job)
+            List of Job objects to transfer as a batch.
 
         Returns
         -------
@@ -245,17 +248,17 @@ class GlobusPrefetcher:
             logger.error(f"Prefetcher caught {e}")
 
             with self.lock:
-                for file_path_mapping in file_path_mappings:
-                    source_file_path = file_path_mapping["source_file_path"]
+                for job in jobs:
+                    source_file_path = job.file_path
                     task_id = self.file_id_mapping[source_file_path]
 
                     self.id_status[task_id] = PrefetcherStatuses.FAILED
 
             return
 
-        for file_path_mapping in file_path_mappings:
-            source_file_path = file_path_mapping["source_file_path"]
-            dest_file_name = file_path_mapping["dest_file_name"]
+        for job in jobs:
+            source_file_path = job.file_path
+            dest_file_name = job.file_id
 
             full_path = f"{self.transfer_dir}/{dest_file_name}"
             tdata.add_item(source_file_path,
@@ -264,13 +267,13 @@ class GlobusPrefetcher:
         task_id = self.tc.submit_transfer(tdata)["task_id"]
 
         with self.lock:
-            for file_path_mapping in file_path_mappings:
-                file_path = file_path_mapping["source_file_path"]
+            for job in jobs:
+                file_path = job.file_path
                 self.file_id_mapping[file_path] = task_id
             self.id_status[task_id] = PrefetcherStatuses.ACTIVE
 
-            for file_path_mapping in file_path_mappings:
-                file_path = file_path_mapping["source_file_path"]
+            for job in jobs:
+                file_path = job.file_path
                 logger.info(f"{file_path}: ACTIVE")
 
         task_data = self.tc.get_task(task_id).data
@@ -282,8 +285,8 @@ class GlobusPrefetcher:
             self.id_status[task_id] = PrefetcherStatuses[task_data["status"]]
             self.num_current_transfers -= 1
 
-            for file_path_mapping in file_path_mappings:
-                file_path = file_path_mapping["source_file_path"]
+            for job in jobs:
+                file_path = job.file_path
                 logger.info(f"{file_path}: {task_data['status']}")
 
     def _get_transfer_client(self) -> None:
@@ -297,3 +300,32 @@ class GlobusPrefetcher:
         authorizer = globus_sdk.AccessTokenAuthorizer(self.transfer_token)
 
         self.tc = globus_sdk.TransferClient(authorizer=authorizer)
+
+
+if __name__ == "__main__":
+    prefetcher = GlobusPrefetcher("AgEqE5QBmdy5NBEyqM1Gx2N4mN299MWN0Y2pPjOvNxqGjMEBpyiwCegxa3MnylpyjDYoQ1bXKjmVYyTygwbYkcp5gz",
+                                  "4f99675c-ac1f-11ea-bee8-0e716405a293",
+                                  "af7bda53-6d04-11e5-ba46-22000b92c6ec",
+                                  "/project2/chard/skluzacek/ryan-data/transfer_dir",
+                                  max_concurrent_transfers=4,
+                                  max_files_per_batch=10,
+                                  max_batch_size=1*10**9)
+
+    import pandas as pd
+
+    deep_blue_crawl_df = pd.read_csv("/Users/ryan/Documents/CS/abyss/data/deep_blue_crawl.csv")
+
+    sorted_files = deep_blue_crawl_df.sort_values(by=["size_bytes"])
+
+    filtered_files = sorted_files.iloc[0:10]
+
+    compressed_files = [{"file_path": x[0], "compressed_size": x[1]} for _, x in filtered_files.iterrows()]
+
+    for compressed_file in compressed_files:
+        job = Job.from_dict(compressed_file)
+        job.file_id = str(uuid.uuid4())
+        prefetcher.transfer_job(job)
+
+
+
+

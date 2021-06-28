@@ -21,6 +21,7 @@ from abyss.utils.error_utils import is_non_critical_funcx_error
 from abyss.utils.funcx_functions import LOCAL_CRAWLER_FUNCX_UUID, \
     DECOMPRESSOR_FUNCX_UUID, PROCESS_HEADER_FUNCX_UUID
 from abyss.utils.psql_utils import update_table_entry
+from abyss.definitions import ROOT_DIR
 
 REQUIRED_ORCHESTRATOR_PARAMETERS = [
             ("globus_eid", str),
@@ -29,8 +30,9 @@ REQUIRED_ORCHESTRATOR_PARAMETERS = [
             ("worker_params", list)
         ]
 
+PROJECT_ROOT = ROOT_DIR + "/"
 logger = logging.getLogger(__name__)
-f_handler = logging.FileHandler('/Users/ryan/Documents/CS/abyss/abyss/orchestrator/file.log')
+f_handler = logging.FileHandler(f'{PROJECT_ROOT}/file.log')
 f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 f_handler.setFormatter(f_format)
 s_handler = logging.StreamHandler()
@@ -452,17 +454,16 @@ class AbyssOrchestrator:
             with self._lock:
                 for worker_id, worker_queue in self.worker_queues.items():
                     prefetcher = self.prefetchers[worker_id]
+                    jobs_to_prefetch = []
 
                     while len(worker_queue):
                         self.thread_statuses["prefetcher_thread"] = True
                         job = worker_queue.popleft()
                         logger.info(f"{job.file_path} PREFETCHING")
 
-                        file_path = job.file_path
                         worker_id = job.worker_id
 
-                        prefetcher.transfer(file_path, job.file_id)
-
+                        jobs_to_prefetch.append(job)
                         job.transfer_path = f"{self.worker_dict[worker_id].transfer_dir}/{job.file_id}"
 
                         for job_node in job.bfs_iterator(include_root=True):
@@ -480,7 +481,10 @@ class AbyssOrchestrator:
                             scheduled_queue.get()
                             logger.info(f"{job.file_path} PLACED INTO PREFETCHING")
 
+                    prefetcher.transfer_job_batch(jobs_to_prefetch)
+
             self.thread_statuses["prefetcher_thread"] = False
+            time.sleep(4)
 
     def _thread_poll_prefetch(self) -> None:
         """Thread function to poll prefetcher and update

@@ -1,14 +1,14 @@
 import os
 import funcx
 
-LOCAL_CRAWLER_FUNCX_UUID = "1d76e239-b6dc-4707-be0b-343fd9b5f012"
-GLOBUS_CRAWLER_FUNCX_UUID = "f5e58c11-b0d0-48aa-8008-286a81e02f4e"
-DECOMPRESSOR_FUNCX_UUID = "7e14a8ee-e58a-4bf9-a483-2ed1570ab924"
-PROCESS_HEADER_FUNCX_UUID = "fb871e86-61dd-40fd-87f5-9dfc4a9b0d45"
-# LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
-# GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
-# DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
-# PROCESS_HEADER_FUNCX_UUID = "03d6d041-6335-4ac2-a09d-eba69c0bc1bd"
+# LOCAL_CRAWLER_FUNCX_UUID = "1d76e239-b6dc-4707-be0b-343fd9b5f012"
+# GLOBUS_CRAWLER_FUNCX_UUID = "f5e58c11-b0d0-48aa-8008-286a81e02f4e"
+# DECOMPRESSOR_FUNCX_UUID = "7e14a8ee-e58a-4bf9-a483-2ed1570ab924"
+# PROCESS_HEADER_FUNCX_UUID = "fb871e86-61dd-40fd-87f5-9dfc4a9b0d45"
+LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
+GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
+DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
+PROCESS_HEADER_FUNCX_UUID = "03d6d041-6335-4ac2-a09d-eba69c0bc1bd"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -57,7 +57,7 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     from abyss.crawlers.local_crawler.local_crawler import LocalCrawler
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler('/home/tskluzac/ryan/file.log')
+    f_handler = logging.FileHandler('file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
@@ -135,7 +135,7 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     job = Job.from_dict(job_dict)
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler('/home/tskluzac/ryan/file.log')
+    f_handler = logging.FileHandler('/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)

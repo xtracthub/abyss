@@ -6,8 +6,10 @@ from typing import Dict, List
 import boto3
 from flask import Flask
 
+from abyss.definitions import ROOT_DIR
 
-PROJECT_ROOT = os.path.realpath(os.path.dirname(__file__)) + "/"
+
+PROJECT_ROOT = ROOT_DIR + "/"
 
 
 def read_aws_config_file(config_file=os.path.join(PROJECT_ROOT,
