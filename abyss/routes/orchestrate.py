@@ -57,7 +57,7 @@ def launch():
     db_entry = {"abyss_id": abyss_id, "client_id": client_id}
     create_table_entry(psql_conn, "abyss_status", **db_entry)
 
-    sqs_conn = create_sqs_connection(**read_flask_aws_config(app))
+    s3_conn = create_s3_connection(**read_flask_aws_config(app))
 
     grouper = ""
     batcher = "mmd"
@@ -80,7 +80,7 @@ def launch():
         orchestrator_params["compressed_files"],
         orchestrator_params["worker_params"],
         psql_conn,
-        sqs_conn,
+        s3_conn,
         grouper=grouper,
         batcher=batcher,
         dispatcher=dispatcher,
@@ -153,7 +153,7 @@ def get_metadata():
         metadata = dict()
 
         metadata_file_path = os.path.join("/tmp", f"{abyss_id}.txt")
-        s3_download_file(s3_conn, "xtract-abyss", metadata_file_path, abyss_id)
+        s3_download_file(s3_conn, "xtract-abyss", metadata_file_path, f"{abyss_id}.txt")
 
         with open(metadata_file_path) as f:
             for line in f.readlines():

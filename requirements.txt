@@ -9,3 +9,4 @@ boto3
 git+https://github.com/materials-data-facility/MaterialsIO.git
 networkx
 xtract_sdk
+numpy

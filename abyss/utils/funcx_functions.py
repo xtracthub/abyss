@@ -1,10 +1,14 @@
 import os
 import funcx
 
-DECOMPRESSOR_FUNCX_UUID = "bba22e8c-e5ad-41f3-846c-af62a762e130"
-GLOBUS_CRAWLER_FUNCX_UUID = "7f87f506-6f44-4897-860c-47d29a1eeaac"
-LOCAL_CRAWLER_FUNCX_UUID = "596e78c5-e0c1-4ebf-957c-9d571ca7a03c"
-PROCESS_HEADER_FUNCX_UUID = "1d6dfb35-e4a4-4c09-bb6b-f77ccf36fa4b"
+LOCAL_CRAWLER_FUNCX_UUID = "1d76e239-b6dc-4707-be0b-343fd9b5f012"
+GLOBUS_CRAWLER_FUNCX_UUID = "f5e58c11-b0d0-48aa-8008-286a81e02f4e"
+DECOMPRESSOR_FUNCX_UUID = "7e14a8ee-e58a-4bf9-a483-2ed1570ab924"
+PROCESS_HEADER_FUNCX_UUID = "fb871e86-61dd-40fd-87f5-9dfc4a9b0d45"
+# LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
+# GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
+# DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
+# PROCESS_HEADER_FUNCX_UUID = "03d6d041-6335-4ac2-a09d-eba69c0bc1bd"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -281,7 +285,9 @@ def hello_world(x):
 
 
 if __name__ == "__main__":
-    register_funcs()
+    from funcx import FuncXClient
+    import time
+    # register_funcs()
     # import funcx
     # import time
     # from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
@@ -317,3 +323,19 @@ if __name__ == "__main__":
     # # transfer_token = "AgvKvXpGaDNYoNyE0p3p4q8BwnNvBn2WBK5JDkw05nBrawwnpNIzCQ3JBpNEQPK1DgyBB1YlYq82pEi9V9xO4HBvg6"
     # # eid = "3f487096-811c-11eb-a933-81bbe47059f4"
     # # print(run_crawler(x, transfer_token, eid, ""))
+
+    def hello_world():
+        return "hello world"
+
+    fxc = FuncXClient()
+    func_id = fxc.register_function(hello_world, container_uuid="bea86349-4ca7-47a7-a674-f2bd28fa4e1e")
+    task_id = fxc.run(function_id=func_id, endpoint_id="40a36b98-8002-4e96-a7f9-3cb5e5161e08")
+    while True:
+        try:
+            result = fxc.get_result(task_id)
+            print(result)
+            time.sleep(1)
+            break
+        except Exception as e:
+            print(e)
+            time.sleep(1)

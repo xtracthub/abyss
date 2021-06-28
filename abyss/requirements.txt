@@ -10,3 +10,4 @@ git+https://github.com/materials-data-facility/MaterialsIO.git
 networkx
 xtract_sdk
 psycopg2
+funcx

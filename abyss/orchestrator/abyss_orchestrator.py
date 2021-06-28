@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import threading
@@ -15,6 +16,7 @@ from abyss.predictors.predictor import Predictor
 from abyss.prefetcher.globus_prefetcher import GlobusPrefetcher, \
     PrefetcherStatuses
 from abyss.schedulers.scheduler import Scheduler
+from abyss.utils.aws_utils import s3_upload_file
 from abyss.utils.error_utils import is_non_critical_funcx_error
 from abyss.utils.funcx_functions import LOCAL_CRAWLER_FUNCX_UUID, \
     DECOMPRESSOR_FUNCX_UUID, PROCESS_HEADER_FUNCX_UUID
@@ -285,15 +287,15 @@ class AbyssOrchestrator:
 
             # logger.info(metadata)
 
-        # metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
-        #
-        # with open(metadata_file_path, "w") as f:
-        #     f.writelines([json.dumps(metadata) for metadata in self.abyss_metadata])
+        metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
 
-        # s3_upload_file(self.s3_conn, "xtract-abyss", metadata_file_path,
-        #                f"{self.abyss_id}.txt")
+        with open(metadata_file_path, "w") as f:
+            f.writelines([json.dumps(metadata) for metadata in self.abyss_metadata])
 
-        # os.remove(metadata_file_path)
+        s3_upload_file(self.s3_conn, "xtract-abyss", metadata_file_path,
+                       f"{self.abyss_id}.txt")
+
+        os.remove(metadata_file_path)
 
     def _unpredicted_preprocessing(self) -> None:
         """Determines whether to use machine learning or file headers

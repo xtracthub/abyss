@@ -197,7 +197,7 @@ def put_messages(sqs_conn, messages: List[Dict], queue_name: str):
 
 
 def create_s3_connection(aws_access: str, aws_secret: str,
-                         region_name: str):
+                         aws_region: str):
     """Creates connection to S3.
 
     Parameters
@@ -206,7 +206,7 @@ def create_s3_connection(aws_access: str, aws_secret: str,
         AWS access key ID.
     aws_secret : str
         AWS secret access key.
-    region_name : str
+    aws_region : str
         Region for S3.
 
     Returns
@@ -216,7 +216,7 @@ def create_s3_connection(aws_access: str, aws_secret: str,
     s3 = boto3.client("s3",
                       aws_access_key_id=aws_access,
                       aws_secret_access_key=aws_secret,
-                      region_name=region_name)
+                      region_name=aws_region)
 
     return s3
 
