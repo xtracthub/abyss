@@ -292,7 +292,7 @@ class AbyssOrchestrator:
         metadata_file_path = os.path.join("/tmp", f"{self.abyss_id}.txt")
 
         with open(metadata_file_path, "w") as f:
-            f.writelines([json.dumps(metadata) for metadata in self.abyss_metadata])
+            f.writelines("\n".join([json.dumps(metadata) for metadata in self.abyss_metadata]))
 
         s3_upload_file(self.s3_conn, "xtract-abyss", metadata_file_path,
                        f"{self.abyss_id}.txt")

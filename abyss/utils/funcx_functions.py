@@ -1,14 +1,14 @@
 import os
 import funcx
 
-# LOCAL_CRAWLER_FUNCX_UUID = "1d76e239-b6dc-4707-be0b-343fd9b5f012"
-# GLOBUS_CRAWLER_FUNCX_UUID = "f5e58c11-b0d0-48aa-8008-286a81e02f4e"
-# DECOMPRESSOR_FUNCX_UUID = "7e14a8ee-e58a-4bf9-a483-2ed1570ab924"
-# PROCESS_HEADER_FUNCX_UUID = "fb871e86-61dd-40fd-87f5-9dfc4a9b0d45"
-LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
-GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
-DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
-PROCESS_HEADER_FUNCX_UUID = "03d6d041-6335-4ac2-a09d-eba69c0bc1bd"
+LOCAL_CRAWLER_FUNCX_UUID = "9eabefb9-f3fd-44ab-ae0c-a6e5607f8732"
+GLOBUS_CRAWLER_FUNCX_UUID = "fa544721-0393-4d79-9468-9b94f6373f5b"
+DECOMPRESSOR_FUNCX_UUID = "d32ed878-c2a5-4049-a443-4ee24016da4b"
+PROCESS_HEADER_FUNCX_UUID = "ec2e19bb-7094-4929-8c63-bf1c223a8c38"
+# LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
+# GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
+# DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
+# PROCESS_HEADER_FUNCX_UUID = "03d6d041-6335-4ac2-a09d-eba69c0bc1bd"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
@@ -55,9 +55,10 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     sys.path.insert(0, "/")
     from abyss.orchestrator.job import Job, JobStatus
     from abyss.crawlers.local_crawler.local_crawler import LocalCrawler
+    from abyss.definitions import ROOT_DIR
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler('file.log')
+    f_handler = logging.FileHandler(f'{ROOT_DIR}/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
@@ -132,10 +133,11 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     from abyss.utils.decompressors import decompress
     from abyss.utils.error_utils import is_critical_oom_error, is_critical_decompression_error
     from abyss.utils.funcx_functions import get_directory_size
+    from abyss.definitions import ROOT_DIR
     job = Job.from_dict(job_dict)
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler('/file.log')
+    f_handler = logging.FileHandler(f'{ROOT_DIR}/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
@@ -275,10 +277,11 @@ def process_job_headers(job_dict: dict) -> dict:
 
 def register_funcs():
     fx = funcx.FuncXClient()
-    print(f"LOCAL CRAWLER ID: {fx.register_function(run_local_crawler, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
-    print(f"GLOBUS CRAWLER ID: {fx.register_function(run_globus_crawler, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
-    print(f"DECOMPRESSOR ID: {fx.register_function(run_decompressor, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
-    print(f"PROCESS HEADER ID: {fx.register_function(process_job_headers, container_uuid='6daadc1b-c99b-47c4-b438-1fb6971f94ff')}")
+    container_uuid = fx.register_container("/project2/chard/skluzacek/ryan-data/globus-crawler.sif", "singularity")
+    print(f"LOCAL_CRAWLER_FUNCX_UUID = \"{fx.register_function(run_local_crawler, container_uuid=container_uuid)}\"")
+    print(f"GLOBUS_CRAWLER_FUNCX_UUID = \"{fx.register_function(run_globus_crawler, container_uuid=container_uuid)}\"")
+    print(f"DECOMPRESSOR_FUNCX_UUID = \"{fx.register_function(run_decompressor, container_uuid=container_uuid)}\"")
+    print(f"PROCESS_HEADER_FUNCX_UUID = \"{fx.register_function(process_job_headers, container_uuid=container_uuid)}\"")
 
 def hello_world(x):
     return "hello world"
@@ -287,7 +290,7 @@ def hello_world(x):
 if __name__ == "__main__":
     from funcx import FuncXClient
     import time
-    # register_funcs()
+    register_funcs()
     # import funcx
     # import time
     # from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
@@ -324,18 +327,18 @@ if __name__ == "__main__":
     # # eid = "3f487096-811c-11eb-a933-81bbe47059f4"
     # # print(run_crawler(x, transfer_token, eid, ""))
 
-    def hello_world():
-        return "hello world"
-
-    fxc = FuncXClient()
-    func_id = fxc.register_function(hello_world, container_uuid="bea86349-4ca7-47a7-a674-f2bd28fa4e1e")
-    task_id = fxc.run(function_id=func_id, endpoint_id="40a36b98-8002-4e96-a7f9-3cb5e5161e08")
-    while True:
-        try:
-            result = fxc.get_result(task_id)
-            print(result)
-            time.sleep(1)
-            break
-        except Exception as e:
-            print(e)
-            time.sleep(1)
+    # def hello_world():
+    #     return "hello world"
+    #
+    # fxc = FuncXClient()
+    # func_id = fxc.register_function(hello_world, container_uuid="bea86349-4ca7-47a7-a674-f2bd28fa4e1e")
+    # task_id = fxc.run(function_id=func_id, endpoint_id="40a36b98-8002-4e96-a7f9-3cb5e5161e08")
+    # while True:
+    #     try:
+    #         result = fxc.get_result(task_id)
+    #         print(result)
+    #         time.sleep(1)
+    #         break
+    #     except Exception as e:
+    #         print(e)
+    #         time.sleep(1)

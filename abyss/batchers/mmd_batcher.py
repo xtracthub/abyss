@@ -6,10 +6,11 @@ import logging
 from abyss.batchers.batcher import Batcher
 from abyss.orchestrator.job import Job
 from abyss.orchestrator.worker import Worker
+from abyss.definitions import ROOT_DIR
 
 
 logger = logging.getLogger(__name__)
-f_handler = logging.FileHandler('file.log')
+f_handler = logging.FileHandler(f"{ROOT_DIR}/file.log")
 f_handler.setLevel(logging.ERROR)
 f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 f_handler.setFormatter(f_format)

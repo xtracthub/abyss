@@ -118,11 +118,14 @@ def get_zip_decompressed_size(file_path: str) -> int:
     """
     decompressed_size = 0
 
-    with zipfile.ZipFile(file_path, "r") as zip_f:
-        for zip_info in zip_f.infolist():
-            decompressed_size += zip_info.file_size
+    try:
+        with zipfile.ZipFile(file_path, "r") as zip_f:
+            for zip_info in zip_f.infolist():
+                decompressed_size += zip_info.file_size
 
-    return decompressed_size
+        return decompressed_size
+    except:
+        return None
 
 
 def get_tar_decompressed_size(file_path: str) -> int:
@@ -141,9 +144,12 @@ def get_tar_decompressed_size(file_path: str) -> int:
     """
     decompressed_size = 0
 
-    with tarfile.open(file_path, "r:") as tar_f:
-        for tar_info in tar_f.getmembers():
-            decompressed_size += tar_info.size
+    try:
+        with tarfile.open(file_path, "r:") as tar_f:
+            for tar_info in tar_f.getmembers():
+                decompressed_size += tar_info.size
 
-    return decompressed_size
+        return decompressed_size
+    except:
+        return None
 

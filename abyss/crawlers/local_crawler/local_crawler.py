@@ -127,6 +127,6 @@ class LocalCrawler(Crawler):
 
 
 if __name__ == "__main__":
-    crawler = LocalCrawler("/Users/ryan/Documents/CS/CDAC/crawler-service/legacy/decompressor_tests/",
+    crawler = LocalCrawler("/Users/ryan/Documents/",
                            "")
     print(crawler.crawl())
