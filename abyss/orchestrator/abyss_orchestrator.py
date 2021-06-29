@@ -554,26 +554,33 @@ class AbyssOrchestrator:
             unpredicted_prefetched_queue = self.job_statuses[JobStatus.UNPREDICTED_PREFETCHED]
             processing_headers_queue = self.job_statuses[JobStatus.PROCESSING_HEADERS]
 
+            batch = self.funcx_client.create_batch()
+            batched_jobs = []
             while not unpredicted_prefetched_queue.empty():
                 self.thread_statuses["funcx_processing_headers_thread"] = True
                 job = unpredicted_prefetched_queue.get()
-
                 logger.info(f"{job.file_path} PROCESSING HEADERS")
                 job_dict = Job.to_dict(job)
                 worker_id = job.worker_id
 
                 worker = self.worker_dict[worker_id]
-                funcx_task_id = self.funcx_client.run(job_dict,
-                                                      endpoint_id=worker.funcx_eid,
-                                                      function_id=PROCESS_HEADER_FUNCX_UUID)
+                batch.add(job_dict, endpoint_id=worker.funcx_eid,
+                          function_id=PROCESS_HEADER_FUNCX_UUID)
+                batched_jobs.append(job)
 
-                job.funcx_process_headers_id = funcx_task_id
+            if len(batch.tasks) > 0:
+                batch_res = self.funcx_client.batch_run(batch)
+            else:
+                batch_res = None
+
+            for idx, job in enumerate(batched_jobs):
+                job.funcx_process_headers_id = batch_res[idx]
                 job.status = JobStatus.PROCESSING_HEADERS
 
                 processing_headers_queue.put(job)
                 logger.info(f"{job.file_path} PROCESSING HEADERS QUEUE")
 
-                time.sleep(1)
+            time.sleep(5)
 
             self.thread_statuses["funcx_processing_headers_thread"] = False
 
@@ -589,26 +596,34 @@ class AbyssOrchestrator:
             prefetched_queue = self.job_statuses[JobStatus.PREFETCHED]
             decompressing_queue = self.job_statuses[JobStatus.DECOMPRESSING]
 
+            batch = self.funcx_client.create_batch()
+            batched_jobs = []
             while not prefetched_queue.empty():
                 self.thread_statuses["funcx_decompress_thread"] = True
                 job = prefetched_queue.get()
-                logger.info(f"{job.file_path} DECOMPRESSING")
                 job_dict = Job.to_dict(job)
                 worker_id = job.worker_id
 
                 worker = self.worker_dict[worker_id]
-                funcx_task_id = self.funcx_client.run(job_dict,
-                                                      worker.decompress_dir,
-                                                      endpoint_id=worker.funcx_eid,
-                                                      function_id=DECOMPRESSOR_FUNCX_UUID)
+                batch.add(job_dict, worker.decompress_dir, endpoint_id=worker.funcx_eid,
+                          function_id=DECOMPRESSOR_FUNCX_UUID)
+                batched_jobs.append(job)
+
+            if len(batch.tasks) > 0:
+                batch_res = self.funcx_client.batch_run(batch)
+            else:
+                batch_res = None
+
+            for idx, job in enumerate(batched_jobs):
+                logger.info(f"{job.file_path} DECOMPRESSING")
                 for job_node in job.bfs_iterator(include_root=True):
-                    job_node.funcx_decompress_id = funcx_task_id
+                    job_node.funcx_decompress_id = batch_res[idx]
                     if job_node.status == JobStatus.PREFETCHED:
                         job_node.status = JobStatus.DECOMPRESSING
 
                 decompressing_queue.put(job)
 
-                time.sleep(1)
+            time.sleep(5)
 
             self.thread_statuses["funcx_decompress_thread"] = False
 
@@ -622,6 +637,8 @@ class AbyssOrchestrator:
             decompressed_queue = self.job_statuses[JobStatus.DECOMPRESSED]
             crawling_queue = self.job_statuses[JobStatus.CRAWLING]
 
+            batch = self.funcx_client.create_batch()
+            batched_jobs = []
             while not decompressed_queue.empty():
                 self.thread_statuses["funcx_crawl_thread"] = True
                 job = decompressed_queue.get()
@@ -630,19 +647,24 @@ class AbyssOrchestrator:
                 worker_id = job.worker_id
 
                 worker = self.worker_dict[worker_id]
-                funcx_task_id = self.funcx_client.run(job_dict,
-                                                      "",
-                                                      endpoint_id=worker.funcx_eid,
-                                                      function_id=LOCAL_CRAWLER_FUNCX_UUID)
+                batch.add(job_dict, "", endpoint_id=worker.funcx_eid,
+                          function_id=LOCAL_CRAWLER_FUNCX_UUID)
+                batched_jobs.append(job)
 
+            if len(batch.tasks) > 0:
+                batch_res = self.funcx_client.batch_run(batch)
+            else:
+                batch_res = None
+
+            for idx, job in enumerate(batched_jobs):
                 for job_node in job.bfs_iterator(include_root=True):
-                    job_node.funcx_crawl_id = funcx_task_id
+                    job_node.funcx_crawl_id = batch_res[idx]
                     if job_node.status == JobStatus.DECOMPRESSED:
                         job_node.status = JobStatus.CRAWLING
 
                 crawling_queue.put(job)
 
-                time.sleep(1)
+            time.sleep(5)
 
             self.thread_statuses["funcx_crawl_thread"] = False
 
@@ -663,42 +685,56 @@ class AbyssOrchestrator:
         failed_queue = self.job_statuses[JobStatus.FAILED]
 
         while not self.kill_status:
-            for _ in range(processing_headers_queue.qsize()):
+            processing_headers_funcx_ids = []
+            processing_header_jobs = []
+            while not processing_headers_queue.empty():
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = processing_headers_queue.get()
                 logger.info(f"{job.file_path} POLLING HEADER PROCESSING")
-                funcx_process_headers_id = job.funcx_process_headers_id
-                worker = self.worker_dict[job.worker_id]
-                try:
-                    result = self.funcx_client.get_result(funcx_process_headers_id)
-                    job = Job.from_dict(result)
-                    logger.info(f"{job.file_path} COMPLETED HEADER PROCESSING")
+                processing_headers_funcx_ids.append(job.funcx_process_headers_id)
+                processing_header_jobs.append(job)
 
+            processing_headers_statuses = self.funcx_client.get_batch_status(task_id_list=processing_headers_funcx_ids)
+            for job in processing_header_jobs:
+                worker = self.worker_dict[job.worker_id]
+                job_status = processing_headers_statuses[job.funcx_process_headers_id]
+
+                if job_status["pending"]:
+                    processing_headers_queue.put(job)
+                elif job_status["status"] == "success":
+                    logger.info(f"{job.file_path} COMPLETED HEADER PROCESSING")
+                    job = Job.from_dict(job_status["result"])
                     job.status = JobStatus.PREDICTED
 
                     worker.curr_available_space += job.compressed_size
                     predicted_queue.put(job)
-                except Exception as e:
-                    if is_non_critical_funcx_error(e):
-                        processing_headers_queue.put(job)
-                    else:
-                        worker.curr_available_space += job.compressed_size
-                        unpredicted_predict_queue = self.job_statuses[JobStatus.UNPREDICTED_PREDICT]
-                        job.status = JobStatus.UNPREDICTED_PREDICT
-                        unpredicted_predict_queue.put(job)
+                elif job_status["status"] == "failed":
+                    worker.curr_available_space += job.compressed_size
+                    unpredicted_predict_queue = self.job_statuses[JobStatus.UNPREDICTED_PREDICT]
+                    job.status = JobStatus.UNPREDICTED_PREDICT
+                    unpredicted_predict_queue.put(job)
 
-                time.sleep(5)
+            time.sleep(5)
 
-            for _ in range(decompressing_queue.qsize()):
+            decompressing_funcx_ids = []
+            decompressing_jobs = []
+            while not decompressing_queue.empty():
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = decompressing_queue.get()
                 logger.info(f"{job.file_path} POLLING DECOMPRESS")
-                funcx_decompress_id = job.funcx_decompress_id
-                worker = self.worker_dict[job.worker_id]
+                decompressing_funcx_ids.append(job.funcx_decompress_id)
+                decompressing_jobs.append(job)
 
-                try:
-                    result = self.funcx_client.get_result(funcx_decompress_id)
-                    job = Job.from_dict(result)
+            decompressing_statuses = self.funcx_client.get_batch_status(decompressing_funcx_ids)
+            for job in decompressing_jobs:
+                worker = self.worker_dict[job.worker_id]
+                job_status = decompressing_statuses[job.funcx_decompress_id]
+                logger.info(job_status)
+
+                if job_status["pending"]:
+                    decompressing_queue.put(job)
+                elif job_status["status"] == "success":
+                    job = Job.from_dict(job_status["result"])
                     logger.info(f"{job.file_path} COMPLETED DECOMPRESS")
 
                     if job.status == JobStatus.FAILED:
@@ -722,26 +758,32 @@ class AbyssOrchestrator:
 
                     decompressed_queue.put(job)
                     logger.info(f"{job.file_path} PLACED INTO DECOMPRESSED")
-                except Exception as e:
+                elif job_status["status"] == "failed":
+                    worker.curr_available_space += job.compressed_size
                     logger.info(f"ERROR for {job.file_path}: {e}")
-                    if is_non_critical_funcx_error(e):
-                        decompressing_queue.put(job)
-                    else:
-                        worker.curr_available_space += job.compressed_size
-                        logger.info(f"ERROR for {job.file_path}: {e}")
-                        logger.info(f"{job.file_path} PLACED INTO FAILED")
-                        failed_queue.put(job)
+                    logger.info(f"{job.file_path} PLACED INTO FAILED")
+                    failed_queue.put(job)
 
-                time.sleep(5)
+            time.sleep(5)
 
-            for _ in range(crawling_queue.qsize()):
+            crawling_funcx_ids = []
+            crawling_jobs = []
+            while not crawling_queue.empty():
                 self.thread_statuses["funcx_poll_thread"] = True
                 job = crawling_queue.get()
                 logger.info(f"{job.file_path} POLLING CRAWL")
-                funcx_crawl_id = job.funcx_crawl_id
+                crawling_funcx_ids.append(job.funcx_crawl_id)
+                crawling_jobs.append(job)
+
+            crawling_statuses = self.funcx_client.get_batch_status(crawling_funcx_ids)
+            for job in crawling_jobs:
                 worker = self.worker_dict[job.worker_id]
-                try:
-                    result = self.funcx_client.get_result(funcx_crawl_id)
+                job_status = crawling_statuses[job.funcx_crawl_id]
+
+                if job_status["pending"]:
+                    crawling_queue.put(job)
+                elif job_status["status"] == "success":
+                    result = job_status["result"]
                     job = Job.from_dict(result)
                     logger.info(f"{job.file_path} COMPLETED CRAWL")
 
@@ -752,15 +794,12 @@ class AbyssOrchestrator:
                     worker.curr_available_space += (job.total_size - job.compressed_size)
                     consolidating_queue.put(job)
                     logger.info(f"{job.file_path} PLACED INTO CONSOLIDATING")
-                except Exception as e:
-                    if is_non_critical_funcx_error(e):
-                        crawling_queue.put(job)
-                    else:
-                        worker.curr_available_space += (job.total_size - job.compressed_size)
-                        failed_queue.put(job)
-                        logger.info(f"{job.file_path} PLACED INTO FAILED")
+                elif job_status["status"] == "failed":
+                    worker.curr_available_space += (job.total_size - job.compressed_size)
+                    failed_queue.put(job)
+                    logger.info(f"{job.file_path} PLACED INTO FAILED")
 
-                time.sleep(5)
+            time.sleep(5)
 
             self.thread_statuses["funcx_poll_thread"] = False
 

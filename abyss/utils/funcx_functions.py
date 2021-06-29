@@ -290,7 +290,7 @@ def hello_world(x):
 if __name__ == "__main__":
     from funcx import FuncXClient
     import time
-    register_funcs()
+    # register_funcs()
     # import funcx
     # import time
     # from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
@@ -327,18 +327,35 @@ if __name__ == "__main__":
     # # eid = "3f487096-811c-11eb-a933-81bbe47059f4"
     # # print(run_crawler(x, transfer_token, eid, ""))
 
-    # def hello_world():
-    #     return "hello world"
-    #
-    # fxc = FuncXClient()
-    # func_id = fxc.register_function(hello_world, container_uuid="bea86349-4ca7-47a7-a674-f2bd28fa4e1e")
-    # task_id = fxc.run(function_id=func_id, endpoint_id="40a36b98-8002-4e96-a7f9-3cb5e5161e08")
-    # while True:
-    #     try:
-    #         result = fxc.get_result(task_id)
-    #         print(result)
-    #         time.sleep(1)
-    #         break
-    #     except Exception as e:
-    #         print(e)
-    #         time.sleep(1)
+
+    tutorial_endpoint = '66dab10e-d323-41e1-8f4a-4bfc3204357e'
+
+    def hello_world(x):
+        return "hello world"
+
+    fxc = FuncXClient()
+
+    container_uuid = fxc.register_container("/home/tskluzac/globus-crawler.sif", "singularity")
+    squared_function = fxc.register_function(hello_world, container_uuid=container_uuid)
+
+    inputs = list(range(10))
+    batch = fxc.create_batch()
+
+    for x in inputs:
+        batch.add(x, endpoint_id=tutorial_endpoint, function_id=squared_function)
+
+    batch_res = fxc.batch_run(batch)
+
+    print(batch_res)
+    while True:
+        try:
+            result = fxc.get_batch_status(batch_res)
+            print(result)
+            for id, status_dict in result.items():
+                print(status_dict)
+                if status_dict["status"] == "failed":
+                    raise status_dict["exception"]
+            time.sleep(5)
+        except Exception as e:
+            print(e)
+            time.sleep(1)
