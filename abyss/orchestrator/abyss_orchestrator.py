@@ -116,6 +116,7 @@ class AbyssOrchestrator:
             job.file_id = str(uuid.uuid4())
             job.decompressed_size = 0
             unpredicted_set.put(job)
+            logger.info(f"LATENCY PLACING {job.file_id} INTO UNPREDICTED AT {time.time()}")
 
         self.scheduler = Scheduler(batcher, dispatcher,
                                    list(self.worker_dict.values()), [])
@@ -374,6 +375,7 @@ class AbyssOrchestrator:
                             job_node.decompressed_size = decompressed_size
                             job_node.status = JobStatus.PREDICTED
 
+                logger.info(f"LATENCY PLACING {job.file_id} INTO PREDICTED AT {time.time()}")
                 predicted_queue.put(job)
 
             self.thread_statuses["predictor_thread"] = False
@@ -429,12 +431,14 @@ class AbyssOrchestrator:
 
                     if queue:
                         if queue == JobStatus.SCHEDULED:
+                            logger.info(f"LATENCY PLACING {job.file_id} INTO SCHEDULED AT {time.time()}")
                             scheduled_queue.put(job)
                             logger.info(f"{job.file_path} SCHEDULED")
                         elif queue == JobStatus.UNPREDICTED_SCHEDULED:
                             unpredicted_scheduled_queue.put(job)
                             logger.info(f"{job.file_path} UNPREDICTED SCHEDULED")
                     else:
+                        logger.info(f"LATENCY PLACING {job.file_id} INTO FAILED AT {time.time()}")
                         logger.info(f"{job.file_path} PLACED INTO FAILED")
                         failed_queue.put(job)
                 self.thread_statuses["scheduler_thread"] = False
@@ -483,6 +487,9 @@ class AbyssOrchestrator:
 
                     prefetcher.transfer_job_batch(jobs_to_prefetch)
 
+                    for job in jobs_to_prefetch:
+                        logger.info(f"LATENCY PLACING {job.file_id} INTO PREFETCHING AT {time.time()}")
+
             self.thread_statuses["prefetcher_thread"] = False
             time.sleep(4)
 
@@ -526,6 +533,7 @@ class AbyssOrchestrator:
                         logger.info(f"{job.file_path} PLACED INTO UNPREDICTED PREFETCHED")
                     else:
                         prefetched_queue.put(job)
+                        logger.info(f"LATENCY PLACING {job.file_id} INTO PREFETCHED AT {time.time()}")
                         logger.info(f"{job.file_path} PLACED INTO PREFETCHED")
                 elif prefetcher_status == PrefetcherStatuses.FAILED:
                     for job_node in job.bfs_iterator(include_root=True):
@@ -622,6 +630,7 @@ class AbyssOrchestrator:
                         job_node.status = JobStatus.DECOMPRESSING
 
                 decompressing_queue.put(job)
+                logger.info(f"LATENCY PLACING {job.file_id} INTO DECOMPRESSING AT {time.time()}")
 
             time.sleep(5)
 
@@ -657,6 +666,7 @@ class AbyssOrchestrator:
                 batch_res = None
 
             for idx, job in enumerate(batched_jobs):
+                logger.info(f"LATENCY PLACING {job.file_id} INTO CRAWLING AT {time.time()}")
                 for job_node in job.bfs_iterator(include_root=True):
                     job_node.funcx_crawl_id = batch_res[idx]
                     if job_node.status == JobStatus.DECOMPRESSED:
@@ -741,6 +751,7 @@ class AbyssOrchestrator:
                         worker.curr_available_space += job.total_size
                         failed_queue.put(job)
                         logger.info(f"{job.file_path} PLACED INTO FAILED")
+                        logger.info(f"LATENCY PLACING {job.file_id} INTO FAILED AT {time.time()}")
                         continue
 
                     has_unpredicted = False
@@ -752,17 +763,20 @@ class AbyssOrchestrator:
 
                     if has_unpredicted:
                         unpredicted_queue.put(job)
+                        logger.info(f"LATENCY PLACING {job.file_id} INTO UNPREDICTED AT {time.time()}")
                         logger.info(f"{job.file_path} PLACED INTO UNPREDICTED")
 
                     worker.curr_available_space += job.compressed_size
 
                     decompressed_queue.put(job)
+                    logger.info(f"LATENCY PLACING {job.file_id} INTO DECOMPRESSED AT {time.time()}")
                     logger.info(f"{job.file_path} PLACED INTO DECOMPRESSED")
                 elif job_status["status"] == "failed":
                     worker.curr_available_space += job.compressed_size
-                    logger.info(f"ERROR for {job.file_path}: {e}")
+                    logger.info(f"ERROR for {job.file_path}: {job_status['exception']}")
                     logger.info(f"{job.file_path} PLACED INTO FAILED")
                     failed_queue.put(job)
+                    logger.info(f"LATENCY PLACING {job.file_id} INTO FAILED AT {time.time()}")
 
             time.sleep(5)
 
@@ -793,11 +807,13 @@ class AbyssOrchestrator:
 
                     worker.curr_available_space += (job.total_size - job.compressed_size)
                     consolidating_queue.put(job)
+                    logger.info(f"LATENCY PLACING {job.file_id} INTO CONSOLIDATING AT {time.time()}")
                     logger.info(f"{job.file_path} PLACED INTO CONSOLIDATING")
                 elif job_status["status"] == "failed":
                     worker.curr_available_space += (job.total_size - job.compressed_size)
                     failed_queue.put(job)
                     logger.info(f"{job.file_path} PLACED INTO FAILED")
+                    logger.info(f"LATENCY PLACING {job.file_id} INTO FAILED AT {time.time()}")
 
             time.sleep(5)
 
@@ -855,6 +871,7 @@ class AbyssOrchestrator:
                 if resubmit_task:
                     logger.info(f"{job.file_path} RESUBMITTING")
                     unpredicted_queue.put(job)
+                    logger.info(f"LATENCY PLACING {job.file_id} INTO UNPREDICTED AT {time.time()}")
                     continue
 
                 consolidated_metadata = job.consolidate_metadata()
@@ -866,6 +883,7 @@ class AbyssOrchestrator:
 
                 succeeded_queue.put(job)
                 logger.info(f"{job.file_path} PLACED INTO SUCCEEDED")
+                logger.info(f"LATENCY PLACING {job.file_id} INTO SUCCEEDED AT {time.time()}")
 
             while not failed_queue.empty():
                 job = failed_queue.get()
@@ -873,6 +891,7 @@ class AbyssOrchestrator:
                 consolidated_metadata = job.consolidate_metadata()
                 self.abyss_metadata.append(consolidated_metadata)
                 succeeded_queue.put(job)
+                logger.info(f"LATENCY PLACING {job.file_id} INTO SUCCEEDED AT {time.time()}")
 
             self.thread_statuses["consolidate_results_thread"] = False
 

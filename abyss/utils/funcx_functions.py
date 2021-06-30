@@ -1,10 +1,10 @@
 import os
 import funcx
 
-LOCAL_CRAWLER_FUNCX_UUID = "9eabefb9-f3fd-44ab-ae0c-a6e5607f8732"
-GLOBUS_CRAWLER_FUNCX_UUID = "fa544721-0393-4d79-9468-9b94f6373f5b"
-DECOMPRESSOR_FUNCX_UUID = "d32ed878-c2a5-4049-a443-4ee24016da4b"
-PROCESS_HEADER_FUNCX_UUID = "ec2e19bb-7094-4929-8c63-bf1c223a8c38"
+LOCAL_CRAWLER_FUNCX_UUID = "fa400ec3-7805-46fd-be90-e701947ef36e"
+GLOBUS_CRAWLER_FUNCX_UUID = "0a3c1164-96b3-4093-9c4d-9233b96c3e4f"
+DECOMPRESSOR_FUNCX_UUID = "07d6b0aa-46c1-4fb0-9fab-403dd1a18237"
+PROCESS_HEADER_FUNCX_UUID = "ad0c7640-32ff-4625-a1b7-6b39ce939220"
 # LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
 # GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
 # DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
@@ -58,7 +58,7 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     from abyss.definitions import ROOT_DIR
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler(f'{ROOT_DIR}/file.log')
+    f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
@@ -137,7 +137,7 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     job = Job.from_dict(job_dict)
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler(f'{ROOT_DIR}/file.log')
+    f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
@@ -283,14 +283,12 @@ def register_funcs():
     print(f"DECOMPRESSOR_FUNCX_UUID = \"{fx.register_function(run_decompressor, container_uuid=container_uuid)}\"")
     print(f"PROCESS_HEADER_FUNCX_UUID = \"{fx.register_function(process_job_headers, container_uuid=container_uuid)}\"")
 
-def hello_world(x):
-    return "hello world"
 
 
 if __name__ == "__main__":
     from funcx import FuncXClient
     import time
-    # register_funcs()
+    register_funcs()
     # import funcx
     # import time
     # from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
@@ -327,35 +325,35 @@ if __name__ == "__main__":
     # # eid = "3f487096-811c-11eb-a933-81bbe47059f4"
     # # print(run_crawler(x, transfer_token, eid, ""))
 
-
-    tutorial_endpoint = '66dab10e-d323-41e1-8f4a-4bfc3204357e'
-
-    def hello_world(x):
-        return "hello world"
-
-    fxc = FuncXClient()
-
-    container_uuid = fxc.register_container("/home/tskluzac/globus-crawler.sif", "singularity")
-    squared_function = fxc.register_function(hello_world, container_uuid=container_uuid)
-
-    inputs = list(range(10))
-    batch = fxc.create_batch()
-
-    for x in inputs:
-        batch.add(x, endpoint_id=tutorial_endpoint, function_id=squared_function)
-
-    batch_res = fxc.batch_run(batch)
-
-    print(batch_res)
-    while True:
-        try:
-            result = fxc.get_batch_status(batch_res)
-            print(result)
-            for id, status_dict in result.items():
-                print(status_dict)
-                if status_dict["status"] == "failed":
-                    raise status_dict["exception"]
-            time.sleep(5)
-        except Exception as e:
-            print(e)
-            time.sleep(1)
+    #
+    # tutorial_endpoint = '66dab10e-d323-41e1-8f4a-4bfc3204357e'
+    #
+    # def hello_world(x):
+    #     return "hello world"
+    #
+    # fxc = FuncXClient()
+    #
+    # container_uuid = fxc.register_container("/home/tskluzac/globus-crawler.sif", "singularity")
+    # squared_function = fxc.register_function(hello_world, container_uuid=container_uuid)
+    #
+    # inputs = list(range(10))
+    # batch = fxc.create_batch()
+    #
+    # for x in inputs:
+    #     batch.add(x, endpoint_id=tutorial_endpoint, function_id=squared_function)
+    #
+    # batch_res = fxc.batch_run(batch)
+    #
+    # print(batch_res)
+    # while True:
+    #     try:
+    #         result = fxc.get_batch_status(batch_res)
+    #         print(result)
+    #         for id, status_dict in result.items():
+    #             print(status_dict)
+    #             if status_dict["status"] == "failed":
+    #                 raise status_dict["exception"]
+    #         time.sleep(5)
+    #     except Exception as e:
+    #         print(e)
+    #         time.sleep(1)
