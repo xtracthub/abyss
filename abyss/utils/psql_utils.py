@@ -29,7 +29,8 @@ ABYSS_STATUS = {
     "crawling": "INT",
     "consolidating": "INT",
     "succeeded": "INT",
-    "failed": "INT"
+    "failed": "INT",
+    "completed": "BOOL"
 }
 
 ABYSS_TABLES = {"abyss_status": ABYSS_STATUS}

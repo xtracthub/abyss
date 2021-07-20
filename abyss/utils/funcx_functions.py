@@ -1,10 +1,10 @@
 import os
 import funcx
 
-LOCAL_CRAWLER_FUNCX_UUID = "fa400ec3-7805-46fd-be90-e701947ef36e"
-GLOBUS_CRAWLER_FUNCX_UUID = "0a3c1164-96b3-4093-9c4d-9233b96c3e4f"
-DECOMPRESSOR_FUNCX_UUID = "07d6b0aa-46c1-4fb0-9fab-403dd1a18237"
-PROCESS_HEADER_FUNCX_UUID = "ad0c7640-32ff-4625-a1b7-6b39ce939220"
+LOCAL_CRAWLER_FUNCX_UUID = "299979c2-96b8-4aa5-b718-484233b93fea"
+GLOBUS_CRAWLER_FUNCX_UUID = "3563bdeb-115d-4c3a-9c70-6ee8d55746a3"
+DECOMPRESSOR_FUNCX_UUID = "ee2e8e53-abc7-4da7-a080-269abc6df874"
+PROCESS_HEADER_FUNCX_UUID = "388128cf-79a4-4963-9e52-9c46cedae7ee"
 # LOCAL_CRAWLER_FUNCX_UUID = "cdad46cc-4ef9-4893-8375-08218e39902d"
 # GLOBUS_CRAWLER_FUNCX_UUID = "39bccae7-312c-4954-bb56-1efdee161e66"
 # DECOMPRESSOR_FUNCX_UUID = "ea2aab1f-47ce-460c-befe-9cdf27883ca6"
@@ -12,7 +12,7 @@ PROCESS_HEADER_FUNCX_UUID = "ad0c7640-32ff-4625-a1b7-6b39ce939220"
 
 
 def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
-                grouper_name: str, max_crawl_threads=2):
+                       grouper_name: str, max_crawl_threads=2):
     import os
     import shutil
     import sys
@@ -47,9 +47,12 @@ def run_globus_crawler(job_dict: dict, transfer_token: str, globus_eid: str,
     return Job.to_dict(job)
 
 
-def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
+def run_local_crawler(job_dict: bytes, grouper_name: str, max_crawl_threads=1):
     import logging
     import os
+    import time
+    import zlib
+    import json
     import sys
     import shutil
     sys.path.insert(0, "/")
@@ -58,13 +61,16 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
     from abyss.definitions import ROOT_DIR
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
+    #f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
+    f_handler = logging.FileHandler(f'/home/tskluzac/ryan/abyss/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
     logger.addHandler(f_handler)
 
-    job = Job.from_dict(job_dict)
+    job = Job.from_dict(json.loads(zlib.decompress(job_dict).decode()))
+    logger.error(f"LATENCY CRAWLING {Job.to_dict(job)}")
+    logger.error(f"LATENCY CRAWLING TIME {job.file_id} {time.time()}")
 
     for job_node in job.bfs_iterator(include_root=True):
         if job_node.status == JobStatus.DECOMPRESSED:
@@ -77,15 +83,20 @@ def run_local_crawler(job_dict: dict, grouper_name: str, max_crawl_threads=1):
             job_node.metadata = metadata
             job_node.status = JobStatus.CRAWLING
 
-        if os.path.exists(job_node.decompress_path):
+        logger.error(f"LATENCY CRAWLING DELETING FILES TIME {job.file_id} {time.time()}")
+        if job_node.decompress_path is not None and os.path.exists(job_node.decompress_path):
             if os.path.isfile(job_node.decompress_path):
                 os.remove(job_node.decompress_path)
                 logger.error(f"REMOVING FILE {job_node.decompress_path}")
             else:
                 shutil.rmtree(job_node.decompress_path)
                 logger.error(f"REMOVING DIRECTORY {job_node.decompress_path}")
+        logger.error(f"FINISHED CRAWLING {job_node.file_path}")
+        logger.error(f"LATENCY CRAWLING DELETING FILES TIME DONE {job.file_id} {time.time()}")
 
-    return Job.to_dict(job)
+    logger.error(f"LATENCY DONE CRAWLING {Job.to_dict(job)}")
+    logger.error(f"LATENCY CRAWLING TIME DONE {job.file_id} {time.time()}")
+    return zlib.compress(json.dumps(Job.to_dict(job)).encode(), level=9)
 
 
 def get_directory_size(start_path):
@@ -110,7 +121,7 @@ def get_directory_size(start_path):
     return dir_size
 
 
-def run_decompressor(job_dict: dict, decompress_dir: str):
+def run_decompressor(job_dict: bytes, decompress_dir: str):
     """Iterates through a Job and recursively decompresses files.
 
     Parameters
@@ -124,8 +135,11 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     -------
 
     """
+    import json
+    import zlib
     import os
     import sys
+    import time
     import logging
     from shutil import rmtree
     sys.path.insert(0, "/")
@@ -134,14 +148,18 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
     from abyss.utils.error_utils import is_critical_oom_error, is_critical_decompression_error
     from abyss.utils.funcx_functions import get_directory_size
     from abyss.definitions import ROOT_DIR
-    job = Job.from_dict(job_dict)
+    job = Job.from_dict(json.loads(zlib.decompress(job_dict).decode()))
 
     logger = logging.getLogger(__name__)
-    f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
+    #f_handler = logging.FileHandler(f'/project2/chard/skluzacek/ryan-data/abyss/file.log')
+    f_handler = logging.FileHandler(f'/home/tskluzac/ryan/abyss/file.log')
     f_handler.setLevel(logging.ERROR)
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
     logger.addHandler(f_handler)
+
+    logger.error(f"LATENCY DECOMPRESSING {Job.to_dict(job)}")
+    logger.error(f"LATENCY DECOMPRESSING START TIME {job.file_id} {time.time()}")
 
     job_nodes = job.to_queue(include_root=True)
 
@@ -152,13 +170,18 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
         decompress_type = os.path.splitext(job_node.file_path)[1][1:]
         logger.error(f"DECOMPRESSING {file_path}")
 
-        if job_node.status == JobStatus.FAILED:
+        if job_node.status in [JobStatus.FAILED, JobStatus.SUCCEEDED]:
             continue
 
         try:
             if decompress_type == "zip":
                 full_extract_dir = os.path.join(decompress_dir,
                                                 job_node.file_id)
+
+                try:
+                    os.mkdir(full_extract_dir)
+                except:
+                    pass
                 decompress(file_path, decompress_type, full_extract_dir)
             elif decompress_type == "tar":
                 full_extract_dir = os.path.join(decompress_dir,
@@ -191,7 +214,10 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 job_node.status = JobStatus.DECOMPRESSING
 
             logger.error(f"REMOVING {job_node.transfer_path}")
+            logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME {job.file_id} {time.time()}")
             os.remove(job_node.transfer_path)
+            logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME DONE {job.file_id} {time.time()}")
+            logger.error(f"FINISHED DECOMPRESSING {job_node.file_path}")
 
         except Exception as e:
             logger.error(f"ERROR TYPE {e}")
@@ -201,19 +227,21 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
                 if job_node.status == JobStatus.PREFETCHED:
                     job_node.status = JobStatus.FAILED
                     job_node.error = str(e)
-
+                logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME {job.file_id} {time.time()}")
                 os.remove(job_node.transfer_path)
 
                 if os.path.exists(full_extract_dir):
                     rmtree(full_extract_dir)
+                logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME DONE {job.file_id} {time.time()}")
             elif is_critical_oom_error(e):
                 logger.error("PROCESSING OOM ERROR")
                 decompressed_size = get_directory_size(full_extract_dir)
                 if decompressed_size > job_node.decompressed_size:
                     logger.error("FILE TOO LARGE")
+                    logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME {job.file_id} {time.time()}")
                     os.remove(job_node.transfer_path)
                     rmtree(full_extract_dir)
-
+                    logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME DONE {job.file_id} {time.time()}")
                     for child_job in job_node.child_jobs:
                         job_nodes.remove(child_job)
 
@@ -222,23 +250,28 @@ def run_decompressor(job_dict: dict, decompress_dir: str):
 
                 else:
                     logger.error("ATTEMPTING TO REPROCESS")
+                    logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME {job.file_id} {time.time()}")
                     rmtree(full_extract_dir)
+                    logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME DONE {job.file_id} {time.time()}")
                     job_nodes.appendleft(job_node)
 
             else:
                 if job_node.status == JobStatus.PREFETCHED:
                     job_node.status = JobStatus.FAILED
                     job_node.error = str(e)
-
-                os.remove(job_node.transfer_path)
+                logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME {job.file_id} {time.time()}")
+                if job_node.transfer_path and os.path.exists(job_node.transfer_path):
+                    os.remove(job_node.transfer_path)
 
                 if os.path.exists(full_extract_dir):
                     rmtree(full_extract_dir)
+                logger.error(f"LATENCY DECOMPRESSING DELETING FILES TIME DONE {job.file_id} {time.time()}")
+    logger.error(f"LATENCY FINISHED DECOMPRESSING {Job.to_dict(job)}")
+    logger.error(f"LATENCY FINISHED DECOMPRESSING TIME {job.file_id} {time.time()}")
+    return zlib.compress(json.dumps(Job.to_dict(job)).encode(), level=9)
 
-    return Job.to_dict(job)
 
-
-def process_job_headers(job_dict: dict) -> dict:
+def process_job_headers(job_dict: bytes) -> bytes:
     """Takes a job object and reads the file header and determines the
     decompressed size of the job.
 
@@ -252,13 +285,15 @@ def process_job_headers(job_dict: dict) -> dict:
     dict
         Job dictionary containing the decompressed size.
     """
+    import json
+    import zlib
     import os
     import sys
     sys.path.insert(0, "/")
     from abyss.orchestrator.job import Job, JobStatus
     from abyss.utils.decompressors import get_zip_decompressed_size, get_tar_decompressed_size
 
-    job = Job.from_dict(job_dict)
+    job = Job.from_dict(json.loads(zlib.decompress(job_dict).decode()))
 
     if job.status != JobStatus.UNPREDICTED_PREFETCHED:
         raise ValueError(f"Job {job.file_path} status is not PROCESSING_HEADERS")
@@ -272,12 +307,12 @@ def process_job_headers(job_dict: dict) -> dict:
     job.decompressed_size = decompressed_size
     os.remove(job.transfer_path)
 
-    return Job.to_dict(job)
+    return zlib.compress(json.dumps(Job.to_dict(job)).encode(), level=9)
 
 
 def register_funcs():
     fx = funcx.FuncXClient()
-    container_uuid = fx.register_container("/project2/chard/skluzacek/ryan-data/globus-crawler.sif", "singularity")
+    container_uuid = fx.register_container("/home/tskluzac/jetstream-container.sif", "singularity")
     print(f"LOCAL_CRAWLER_FUNCX_UUID = \"{fx.register_function(run_local_crawler, container_uuid=container_uuid)}\"")
     print(f"GLOBUS_CRAWLER_FUNCX_UUID = \"{fx.register_function(run_globus_crawler, container_uuid=container_uuid)}\"")
     print(f"DECOMPRESSOR_FUNCX_UUID = \"{fx.register_function(run_decompressor, container_uuid=container_uuid)}\"")
@@ -286,74 +321,4 @@ def register_funcs():
 
 
 if __name__ == "__main__":
-    from funcx import FuncXClient
-    import time
     register_funcs()
-    # import funcx
-    # import time
-    # from abyss.crawlers.local_crawler.local_crawler import LOCAL_CRAWLER_FUNCX_UUID
-    # fx = funcx.FuncXClient()
-    # # print(fx.register_function(run_local_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    #
-    # # d = {'file_path': '/UMich/download/DeepBlueData_79407x76d/fig01.tar.gz', 'file_id': '6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'compressed_size': 38664, 'decompressed_size': 106857, 'total_size': 145521, 'worker_id': '4c0f8eb8-6363-4f34-a6e0-4fee6d2621f3', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'decompress_path': '/home/tskluzac/ryan/results/6bc77252-1a2f-40e9-9b77-a3c23cb32f79', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}
-    # id = fx.register_function(hello_world,container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff")
-    # print(id)
-    # crawl_id = fx.run("", endpoint_id="66dab10e-d323-41e1-8f4a-4bfc3204357e",
-    #                                                   function_id=id)
-    #
-    # while True:
-    #     try:
-    #         print(fx.get_result(crawl_id))
-    #     except Exception as e:
-    #         print(e)
-    #         time.sleep(5)
-    #     # try:
-    #     #     print(fx.get_result(crawl_id))
-    #     #     crawl_id = fx.run("",
-    #     #                       endpoint_id="99da411c-92b4-4b44-a86c-dc4abb5cbe0a",
-    #     #                       function_id=id)
-    #     # except Exception as e:
-    #     #     print(e)
-    #     #     time.sleep(5)
-    #
-    # # print(fx.register_function(run_local_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    # # print(fx.register_function(run_decompressor, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    # # print(fx.register_function(run_globus_crawler, container_uuid="6daadc1b-c99b-47c4-b438-1fb6971f94ff"))
-    #
-    # # x = {'file_path': '/UMich/download/DeepBlueData_pv63g053w/repro_200k_annotations.tar.gz', 'file_id': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'compressed_size': 39726958, 'decompressed_size': 109794247, 'total_size': 317000857, 'worker_id': '86cf9bc8-1792-4f2f-92dd-2967c411d962', 'transfer_path': '/home/tskluzac/ryan/deep_blue_data/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'decompress_path': '/home/tskluzac/ryan/results/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'CONSOLIDATING', 'metadata': {'root_path': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05', 'metadata': {'repro_200k_annotations.tar': {'physical': {'size': 563630080, 'extension': '.tar', 'is_compressed': True}}}}, 'child_jobs': {'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar': {'file_path': 'a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar', 'file_id': 'bf1354e9-583b-4570-ac26-cf6ab0a8a505', 'compressed_size': 563630080, 'decompressed_size': 207206610, 'total_size': 770836690, 'worker_id': None, 'transfer_path': '/home/tskluzac/ryan/results/a8fbf8a7-0272-4af2-837f-b0e1c6c8cf05/repro_200k_annotations.tar', 'decompress_path': '/home/tskluzac/ryan/results/bf1354e9-583b-4570-ac26-cf6ab0a8a505/repro_200k_annotations', 'funcx_decompress_id': None, 'funcx_crawl_id': None, 'status': 'DECOMPRESSED', 'metadata': {}, 'child_jobs': {}}}}
-    # # transfer_token = "AgvKvXpGaDNYoNyE0p3p4q8BwnNvBn2WBK5JDkw05nBrawwnpNIzCQ3JBpNEQPK1DgyBB1YlYq82pEi9V9xO4HBvg6"
-    # # eid = "3f487096-811c-11eb-a933-81bbe47059f4"
-    # # print(run_crawler(x, transfer_token, eid, ""))
-
-    #
-    # tutorial_endpoint = '66dab10e-d323-41e1-8f4a-4bfc3204357e'
-    #
-    # def hello_world(x):
-    #     return "hello world"
-    #
-    # fxc = FuncXClient()
-    #
-    # container_uuid = fxc.register_container("/home/tskluzac/globus-crawler.sif", "singularity")
-    # squared_function = fxc.register_function(hello_world, container_uuid=container_uuid)
-    #
-    # inputs = list(range(10))
-    # batch = fxc.create_batch()
-    #
-    # for x in inputs:
-    #     batch.add(x, endpoint_id=tutorial_endpoint, function_id=squared_function)
-    #
-    # batch_res = fxc.batch_run(batch)
-    #
-    # print(batch_res)
-    # while True:
-    #     try:
-    #         result = fxc.get_batch_status(batch_res)
-    #         print(result)
-    #         for id, status_dict in result.items():
-    #             print(status_dict)
-    #             if status_dict["status"] == "failed":
-    #                 raise status_dict["exception"]
-    #         time.sleep(5)
-    #     except Exception as e:
-    #         print(e)
-    #         time.sleep(1)
